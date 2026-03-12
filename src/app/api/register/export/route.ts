@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
+import { buildPersonalDataMasterMaps, formatCodes, parseJsonArray } from "@/lib/personal-data";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "下書き",
@@ -42,6 +43,11 @@ export async function GET(req: NextRequest) {
     },
     orderBy: [{ businessProcessId: "asc" }, { createdAt: "asc" }],
   });
+  const [categories, fields] = await Promise.all([
+    prisma.dataCategory.findMany(),
+    prisma.dataFieldDefinition.findMany(),
+  ]);
+  const { categoriesByCode, fieldsByCode } = buildPersonalDataMasterMaps(categories, fields);
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "AIPmark5";
@@ -62,7 +68,7 @@ export async function GET(req: NextRequest) {
   const allBorders = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
 
   // Title row
-  sheet.mergeCells("A1:L1");
+  sheet.mergeCells("A1:M1");
   const titleCell = sheet.getCell("A1");
   titleCell.value = "個人情報取扱台帳";
   titleCell.font = { bold: true, size: 14, color: { argb: "FF1E40AF" } };
@@ -72,12 +78,12 @@ export async function GET(req: NextRequest) {
   // Column headers
   const headers = [
     "No.", "部門", "業務プロセス", "データ主体",
-    "個人情報カテゴリ", "取得・利用目的", "法的根拠",
+    "個人情報区分", "個人情報項目", "取得・利用目的", "法的根拠",
     "保存期間", "保存場所・システム", "第三者提供",
     "確定状況", "ステータス",
   ];
 
-  const colWidths = [6, 16, 22, 18, 30, 28, 22, 14, 24, 14, 10, 14];
+  const colWidths = [6, 16, 22, 18, 18, 30, 28, 22, 14, 24, 14, 10, 14];
 
   headers.forEach((h, i) => {
     const cell = sheet.getCell(2, i + 1);
@@ -93,17 +99,16 @@ export async function GET(req: NextRequest) {
   // Data rows
   items.forEach((item, idx) => {
     const row = sheet.getRow(idx + 3);
-    const categories = (() => {
-      try { return (JSON.parse(item.dataCategories) as string[]).join("、"); }
-      catch { return item.dataCategories; }
-    })();
+    const categoryLabels = formatCodes(parseJsonArray(item.dataCategoryCodes), categoriesByCode);
+    const fieldLabels = formatCodes(parseJsonArray(item.dataFieldCodes), fieldsByCode);
 
     const values = [
       idx + 1,
       item.businessProcess.department.name,
       item.businessProcess.name,
       item.dataSubject,
-      categories,
+      categoryLabels,
+      fieldLabels,
       item.purpose,
       item.legalBasis,
       item.retentionPeriod,

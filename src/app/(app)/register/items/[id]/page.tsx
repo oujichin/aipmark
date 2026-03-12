@@ -3,11 +3,13 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
+import { buildPersonalDataMasterMaps, formatCodes, type DataFieldMasterRecord, type MasterRecord } from "@/lib/personal-data";
 
 interface RegisterItem {
   id: string;
   dataSubject: string;
-  dataCategories: string[];
+  dataCategoryCodes: string[];
+  dataFieldCodes: string[];
   purpose: string;
   legalBasis: string;
   retentionPeriod: string;
@@ -41,6 +43,8 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const router = useRouter();
   const [item, setItem] = useState<RegisterItem | null>(null);
+  const [categories, setCategories] = useState<MasterRecord[]>([]);
+  const [fields, setFields] = useState<DataFieldMasterRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [comment, setComment] = useState("");
@@ -49,9 +53,17 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
   const [form, setForm] = useState<Partial<RegisterItem>>({});
 
   useEffect(() => {
-    fetch(`/api/register/items/${id}`)
-      .then((r) => r.json())
-      .then((data) => { setItem(data); setForm(data); setLoading(false); });
+    Promise.all([
+      fetch(`/api/register/items/${id}`).then((r) => r.json()),
+      fetch("/api/master/data-categories").then((r) => r.json()),
+      fetch("/api/master/data-fields").then((r) => r.json()),
+    ]).then(([data, categoryRows, fieldRows]) => {
+      setItem(data);
+      setForm(data);
+      setCategories(categoryRows);
+      setFields(fieldRows);
+      setLoading(false);
+    });
   }, [id]);
 
   async function handleAction(action: string, actionComment?: string) {
@@ -82,7 +94,13 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
     });
     if (res.ok) {
       const updated = await res.json();
-      setItem((prev) => prev ? { ...prev, ...updated, dataCategories: JSON.parse(updated.dataCategories) } : null);
+      const merged = {
+        ...updated,
+        dataCategoryCodes: updated.dataCategoryCodes,
+        dataFieldCodes: updated.dataFieldCodes,
+      };
+      setItem((prev) => prev ? { ...prev, ...merged } : null);
+      setForm(merged);
       setEditMode(false);
     }
     setSubmitting(false);
@@ -92,6 +110,7 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
   if (!item) return <div className="text-slate-400 text-sm py-8 text-center">見つかりません</div>;
 
   const isLocked = item.status === "LOCKED";
+  const { categoriesByCode, fieldsByCode } = buildPersonalDataMasterMaps(categories, fields);
 
   return (
     <div>
@@ -152,6 +171,64 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                   />
                 </div>
               ))}
+              <div className="col-span-2">
+                <label className="block text-xs text-slate-500 mb-2">個人情報区分</label>
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3">
+                  {categories.map((category) => {
+                    const checked = (form.dataCategoryCodes ?? []).includes(category.code);
+                    return (
+                      <label key={category.code} className="flex items-start gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => setForm({
+                            ...form,
+                            dataCategoryCodes: e.target.checked
+                              ? [...(form.dataCategoryCodes ?? []), category.code]
+                              : (form.dataCategoryCodes ?? []).filter((code) => code !== category.code),
+                          })}
+                        />
+                        <span>{category.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs text-slate-500 mb-2">個人情報項目</label>
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3 max-h-64 overflow-y-auto">
+                  {fields.map((field) => {
+                    const checked = (form.dataFieldCodes ?? []).includes(field.code);
+                    return (
+                      <label key={field.code} className="flex items-start gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => setForm({
+                            ...form,
+                            dataFieldCodes: e.target.checked
+                              ? [...(form.dataFieldCodes ?? []), field.code]
+                              : (form.dataFieldCodes ?? []).filter((code) => code !== field.code),
+                          })}
+                        />
+                        <span>{field.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">第三者提供</label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.thirdPartyProvision ?? "NONE"}
+                  onChange={(e) => setForm({ ...form, thirdPartyProvision: e.target.value })}
+                >
+                  <option value="NONE">なし</option>
+                  <option value="DOMESTIC">国内提供あり</option>
+                  <option value="OVERSEAS">第三国提供あり</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">確定状況</label>
                 <select
@@ -164,6 +241,17 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
                   <option value="UNCONFIRMED">未確認</option>
                 </select>
               </div>
+              {form.confirmationStatus === "INFERRED" && (
+                <div className="col-span-2">
+                  <label className="block text-xs text-slate-500 mb-1">推定根拠</label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={2}
+                    value={form.inferenceBasis ?? ""}
+                    onChange={(e) => setForm({ ...form, inferenceBasis: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="col-span-2 flex justify-end gap-3 pt-2">
                 <button onClick={() => setEditMode(false)} className="text-sm text-slate-500">キャンセル</button>
                 <button onClick={handleSave} disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
@@ -175,7 +263,8 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
               {[
                 { label: "データ主体", value: item.dataSubject },
-                { label: "個人情報カテゴリ", value: item.dataCategories?.join("、") },
+                { label: "個人情報区分", value: formatCodes(item.dataCategoryCodes ?? [], categoriesByCode) },
+                { label: "個人情報項目", value: formatCodes(item.dataFieldCodes ?? [], fieldsByCode) },
                 { label: "利用目的", value: item.purpose },
                 { label: "法的根拠", value: item.legalBasis },
                 { label: "保存期間", value: item.retentionPeriod },

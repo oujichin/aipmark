@@ -18,11 +18,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let auditAction = "";
 
   if (action === "REQUEST_APPROVAL") {
-    updateData = { status: "PENDING_APPROVAL" };
+    if (!["DRAFT", "REVIEWING", "REJECTED"].includes(item.status)) {
+      return NextResponse.json({ error: "この状態の台帳は承認申請できません" }, { status: 409 });
+    }
+    updateData = {
+      status: "PENDING_APPROVAL",
+      rejectionReason: null,
+    };
     auditAction = "REQUEST_APPROVAL";
   } else if (action === "APPROVE") {
     if (!["PRIVACY_OFFICER", "TOP_MANAGEMENT"].includes(session.user.role)) {
       return NextResponse.json({ error: "承認権限がありません" }, { status: 403 });
+    }
+    if (item.status !== "PENDING_APPROVAL") {
+      return NextResponse.json({ error: "承認申請中の台帳のみ承認できます" }, { status: 409 });
     }
     const now = new Date();
     updateData = {
@@ -31,11 +40,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       approvedAt: now,
       lockedAt: now,
       version: item.version + 1,
+      rejectionReason: null,
     };
     auditAction = "APPROVE";
   } else if (action === "REJECT") {
     if (!["PRIVACY_OFFICER", "TOP_MANAGEMENT"].includes(session.user.role)) {
       return NextResponse.json({ error: "差戻し権限がありません" }, { status: 403 });
+    }
+    if (item.status !== "PENDING_APPROVAL") {
+      return NextResponse.json({ error: "承認申請中の台帳のみ差戻しできます" }, { status: 409 });
+    }
+    if (!comment?.trim()) {
+      return NextResponse.json({ error: "差戻しコメントを入力してください" }, { status: 400 });
     }
     updateData = { status: "REJECTED", rejectionReason: comment ?? "" };
     auditAction = "REJECT";

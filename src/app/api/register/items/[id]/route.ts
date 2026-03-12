@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { parseJsonArray } from "@/lib/personal-data";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -20,7 +21,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     ...item,
-    dataCategories: JSON.parse(item.dataCategories),
+    dataCategoryCodes: parseJsonArray(item.dataCategoryCodes),
+    dataFieldCodes: parseJsonArray(item.dataFieldCodes),
   });
 }
 
@@ -37,11 +39,36 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "ロック済みの台帳は編集できません" }, { status: 403 });
   }
 
+  if (body.dataCategoryCodes !== undefined) {
+    if (!Array.isArray(body.dataCategoryCodes) || body.dataCategoryCodes.length === 0) {
+      return NextResponse.json({ error: "個人情報区分を1件以上選択してください" }, { status: 400 });
+    }
+    const categoryCount = await prisma.dataCategory.count({
+      where: { code: { in: body.dataCategoryCodes } },
+    });
+    if (categoryCount !== body.dataCategoryCodes.length) {
+      return NextResponse.json({ error: "未定義の個人情報区分が含まれています" }, { status: 400 });
+    }
+  }
+
+  if (body.dataFieldCodes !== undefined) {
+    if (!Array.isArray(body.dataFieldCodes) || body.dataFieldCodes.length === 0) {
+      return NextResponse.json({ error: "個人情報項目を1件以上選択してください" }, { status: 400 });
+    }
+    const fieldCount = await prisma.dataFieldDefinition.count({
+      where: { code: { in: body.dataFieldCodes } },
+    });
+    if (fieldCount !== body.dataFieldCodes.length) {
+      return NextResponse.json({ error: "未定義の個人情報項目が含まれています" }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.registerItem.update({
     where: { id },
     data: {
       ...body,
-      dataCategories: body.dataCategories ? JSON.stringify(body.dataCategories) : undefined,
+      dataCategoryCodes: body.dataCategoryCodes ? JSON.stringify(body.dataCategoryCodes) : undefined,
+      dataFieldCodes: body.dataFieldCodes ? JSON.stringify(body.dataFieldCodes) : undefined,
     },
     include: { businessProcess: true },
   });

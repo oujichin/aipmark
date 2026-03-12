@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
   const {
     businessProcessId,
     dataSubject,
-    dataCategories,
+    dataCategoryCodes,
+    dataFieldCodes,
     purpose,
     legalBasis,
     retentionPeriod,
@@ -45,11 +46,27 @@ export async function POST(req: NextRequest) {
     inferenceBasis,
   } = body;
 
+  if (!Array.isArray(dataCategoryCodes) || dataCategoryCodes.length === 0) {
+    return NextResponse.json({ error: "個人情報区分を1件以上選択してください" }, { status: 400 });
+  }
+  if (!Array.isArray(dataFieldCodes) || dataFieldCodes.length === 0) {
+    return NextResponse.json({ error: "個人情報項目を1件以上選択してください" }, { status: 400 });
+  }
+
+  const [categoryCount, fieldCount] = await Promise.all([
+    prisma.dataCategory.count({ where: { code: { in: dataCategoryCodes } } }),
+    prisma.dataFieldDefinition.count({ where: { code: { in: dataFieldCodes } } }),
+  ]);
+  if (categoryCount !== dataCategoryCodes.length || fieldCount !== dataFieldCodes.length) {
+    return NextResponse.json({ error: "個人情報区分または項目に未定義コードが含まれています" }, { status: 400 });
+  }
+
   const item = await prisma.registerItem.create({
     data: {
       businessProcessId,
       dataSubject,
-      dataCategories: JSON.stringify(dataCategories),
+      dataCategoryCodes: JSON.stringify(dataCategoryCodes ?? []),
+      dataFieldCodes: JSON.stringify(dataFieldCodes ?? []),
       purpose,
       legalBasis,
       retentionPeriod,

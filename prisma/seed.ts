@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { DATA_CATEGORY_SEED, DATA_FIELD_DEFINITION_SEED } from "@/lib/personal-data";
 
 const prisma = new PrismaClient();
 
@@ -139,15 +140,70 @@ async function main() {
     },
   });
 
+  for (const category of DATA_CATEGORY_SEED) {
+    await prisma.dataCategory.upsert({
+      where: { code: category.code },
+      update: {
+        name: category.name,
+        description: category.description,
+        isSensitive: category.isSensitive ?? false,
+      },
+      create: {
+        code: category.code,
+        name: category.name,
+        description: category.description,
+        isSensitive: category.isSensitive ?? false,
+      },
+    });
+  }
+
+  for (const field of DATA_FIELD_DEFINITION_SEED) {
+    await prisma.dataFieldDefinition.upsert({
+      where: { code: field.code },
+      update: {
+        name: field.name,
+        description: field.description,
+        categoryHint: field.categoryHint,
+        isSensitive: field.isSensitive ?? false,
+        isSpecificPerson: field.isSpecificPerson ?? false,
+      },
+      create: {
+        code: field.code,
+        name: field.name,
+        description: field.description,
+        categoryHint: field.categoryHint,
+        isSensitive: field.isSensitive ?? false,
+        isSpecificPerson: field.isSpecificPerson ?? false,
+      },
+    });
+  }
+
   // Sample RegisterItems for bp1 (approved/locked)
   const item1 = await prisma.registerItem.upsert({
     where: { id: "ri-customer-contact" },
-    update: {},
+    update: {
+      businessProcessId: bp1.id,
+      dataSubject: "顧客（法人担当者・個人顧客）",
+      dataCategoryCodes: JSON.stringify(["GENERAL"]),
+      dataFieldCodes: JSON.stringify(["FULL_NAME", "EMAIL_ADDRESS", "PHONE_NUMBER", "COMPANY_INFO"]),
+      purpose: "営業活動・契約管理・問い合わせ対応",
+      legalBasis: "契約の履行（個人情報保護法17条）",
+      retentionPeriod: "契約終了後5年",
+      storageLocation: "CRMシステム（クラウド）・社内共有ドライブ",
+      thirdPartyProvision: "NONE",
+      confirmationStatus: "CONFIRMED",
+      status: "LOCKED",
+      version: 2,
+      approvedById: "user-privacy-officer",
+      approvedAt: new Date("2025-01-15"),
+      lockedAt: new Date("2025-01-15"),
+    },
     create: {
       id: "ri-customer-contact",
       businessProcessId: bp1.id,
       dataSubject: "顧客（法人担当者・個人顧客）",
-      dataCategories: JSON.stringify(["氏名", "メールアドレス", "電話番号", "会社名・部署名"]),
+      dataCategoryCodes: JSON.stringify(["GENERAL"]),
+      dataFieldCodes: JSON.stringify(["FULL_NAME", "EMAIL_ADDRESS", "PHONE_NUMBER", "COMPANY_INFO"]),
       purpose: "営業活動・契約管理・問い合わせ対応",
       legalBasis: "契約の履行（個人情報保護法17条）",
       retentionPeriod: "契約終了後5年",
@@ -164,12 +220,28 @@ async function main() {
 
   const item2 = await prisma.registerItem.upsert({
     where: { id: "ri-customer-purchase" },
-    update: {},
+    update: {
+      businessProcessId: bp1.id,
+      dataSubject: "顧客（個人顧客）",
+      dataCategoryCodes: JSON.stringify(["GENERAL"]),
+      dataFieldCodes: JSON.stringify(["FULL_NAME", "PURCHASE_HISTORY", "BILLING_ADDRESS"]),
+      purpose: "受注処理・請求・アフターサービス",
+      legalBasis: "契約の履行",
+      retentionPeriod: "契約終了後7年（税法上の要件）",
+      storageLocation: "基幹システム（オンプレミス）",
+      thirdPartyProvision: "NONE",
+      confirmationStatus: "CONFIRMED",
+      status: "APPROVED",
+      version: 1,
+      approvedById: "user-privacy-officer",
+      approvedAt: new Date("2025-02-01"),
+    },
     create: {
       id: "ri-customer-purchase",
       businessProcessId: bp1.id,
       dataSubject: "顧客（個人顧客）",
-      dataCategories: JSON.stringify(["氏名", "購買履歴", "請求先住所"]),
+      dataCategoryCodes: JSON.stringify(["GENERAL"]),
+      dataFieldCodes: JSON.stringify(["FULL_NAME", "PURCHASE_HISTORY", "BILLING_ADDRESS"]),
       purpose: "受注処理・請求・アフターサービス",
       legalBasis: "契約の履行",
       retentionPeriod: "契約終了後7年（税法上の要件）",
@@ -186,12 +258,27 @@ async function main() {
   // Sample inferred item (new workflow)
   await prisma.registerItem.upsert({
     where: { id: "ri-employee-basic" },
-    update: {},
+    update: {
+      businessProcessId: bp2.id,
+      dataSubject: "従業員・役員",
+      dataCategoryCodes: JSON.stringify(["GENERAL", "SENSITIVE", "SPECIFIC"]),
+      dataFieldCodes: JSON.stringify(["FULL_NAME", "ADDRESS", "DATE_OF_BIRTH", "MY_NUMBER", "SALARY_INFO", "HEALTH_CHECK_RESULT"]),
+      purpose: "雇用管理・給与計算・社会保険手続き",
+      legalBasis: "法令に基づく義務（労働基準法・社会保険法等）",
+      retentionPeriod: "退職後10年",
+      storageLocation: "人事システム・給与計算ソフト（オンプレミス）",
+      thirdPartyProvision: "DOMESTIC",
+      confirmationStatus: "INFERRED",
+      inferenceBasis: "業種・規模から推定。ヒアリングで確認要。",
+      status: "REVIEWING",
+      version: 1,
+    },
     create: {
       id: "ri-employee-basic",
       businessProcessId: bp2.id,
       dataSubject: "従業員・役員",
-      dataCategories: JSON.stringify(["氏名", "住所", "生年月日", "マイナンバー", "給与情報", "健康診断結果"]),
+      dataCategoryCodes: JSON.stringify(["GENERAL", "SENSITIVE", "SPECIFIC"]),
+      dataFieldCodes: JSON.stringify(["FULL_NAME", "ADDRESS", "DATE_OF_BIRTH", "MY_NUMBER", "SALARY_INFO", "HEALTH_CHECK_RESULT"]),
       purpose: "雇用管理・給与計算・社会保険手続き",
       legalBasis: "法令に基づく義務（労働基準法・社会保険法等）",
       retentionPeriod: "退職後10年",

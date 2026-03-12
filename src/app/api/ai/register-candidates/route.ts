@@ -12,12 +12,18 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { processName, processDescription, hearingAnswers, hypotheses } = body;
+  const [dataCategories, dataFields] = await Promise.all([
+    prisma.dataCategory.findMany({ orderBy: { code: "asc" } }),
+    prisma.dataFieldDefinition.findMany({ orderBy: { code: "asc" } }),
+  ]);
 
   const prompt = buildRegisterCandidatesPrompt({
     processName,
     processDescription,
     hearingAnswers,
     hypotheses,
+    dataCategories,
+    dataFields,
   });
   const { masked } = maskPII(prompt);
 

@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { buildPersonalDataMasterMaps, formatCodes, parseJsonArray, type DataFieldMasterRecord, type MasterRecord } from "@/lib/personal-data";
 
 interface RegisterItem {
   id: string;
   dataSubject: string;
-  dataCategories: string;
+  dataCategoryCodes: string;
+  dataFieldCodes: string;
   purpose: string;
   status: string;
   confirmationStatus: string;
@@ -39,21 +41,28 @@ function ItemsContent() {
   const processId = searchParams.get("processId");
 
   const [items, setItems] = useState<RegisterItem[]>([]);
+  const [categories, setCategories] = useState<MasterRecord[]>([]);
+  const [fields, setFields] = useState<DataFieldMasterRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const url = processId
       ? `/api/register/items?processId=${processId}`
       : "/api/register/items";
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => { setItems(data); setLoading(false); });
+    Promise.all([
+      fetch(url).then((r) => r.json()),
+      fetch("/api/master/data-categories").then((r) => r.json()),
+      fetch("/api/master/data-fields").then((r) => r.json()),
+    ])
+      .then(([itemRows, categoryRows, fieldRows]) => {
+        setItems(itemRows);
+        setCategories(categoryRows);
+        setFields(fieldRows);
+        setLoading(false);
+      });
   }, [processId]);
 
-  const parseCategories = (cats: string) => {
-    try { return (JSON.parse(cats) as string[]).join("、"); }
-    catch { return cats; }
-  };
+  const { categoriesByCode, fieldsByCode } = buildPersonalDataMasterMaps(categories, fields);
 
   return (
     <div>
@@ -87,7 +96,8 @@ function ItemsContent() {
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 w-8">No.</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">データ主体</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">個人情報カテゴリ</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">個人情報区分</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">個人情報項目</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">業務プロセス</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">確定状況</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">ステータス</th>
@@ -103,7 +113,10 @@ function ItemsContent() {
                     <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
                     <td className="px-4 py-3 font-medium text-slate-800">{item.dataSubject}</td>
                     <td className="px-4 py-3 text-slate-600 text-xs max-w-48 truncate">
-                      {parseCategories(item.dataCategories)}
+                      {formatCodes(parseJsonArray(item.dataCategoryCodes), categoriesByCode)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 text-xs max-w-56 truncate">
+                      {formatCodes(parseJsonArray(item.dataFieldCodes), fieldsByCode)}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
                       <div>{item.businessProcess.name}</div>

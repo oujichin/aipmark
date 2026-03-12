@@ -161,7 +161,8 @@ model RegisterItem {
   id                  String    @id @default(cuid())
   businessProcessId   String
   dataSubject         String    // データ主体（顧客・従業員等）
-  dataCategories      String    // JSON: カテゴリリスト
+  dataCategoryCodes   String    @default("[]") // JSON: 個人情報区分コードリスト
+  dataFieldCodes      String    @default("[]") // JSON: 個人情報項目定義コードリスト
   purpose             String    // 利用目的
   legalBasis          String    // 法的根拠
   retentionPeriod     String    // 保存期間
@@ -232,6 +233,19 @@ model DataCategory {
   description String?
   isSensitive Boolean  @default(false)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DataFieldDefinition {
+  id               String   @id @default(cuid())
+  name             String
+  code             String   @unique
+  description      String?
+  categoryHint     String?  // CONTACT | IDENTITY | HR | FINANCE など
+  isSensitive      Boolean  @default(false)
+  isSpecificPerson Boolean  @default(false) // 特定個人情報該当
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model AuditLog {

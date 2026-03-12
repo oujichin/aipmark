@@ -3,9 +3,31 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
+import { buildPersonalDataMasterMaps, formatCodes, type DataFieldMasterRecord, type MasterRecord } from "@/lib/personal-data";
 
 interface Process { id: string; name: string; description: string; }
 interface Hypothesis { id: string; topic: string; question: string; hypothesis?: string; confidenceLevel: string; priority: number; answered: boolean; answer?: string; }
+interface Candidate {
+  dataSubject: string;
+  dataCategoryCodes: string[];
+  dataFieldCodes: string[];
+  purpose: string;
+  legalBasis: string;
+  retentionPeriod: string;
+  storageLocation: string;
+  thirdPartyProvision?: string;
+  confirmationStatus?: string;
+  inferenceBasis?: string;
+}
+interface HearingRecord {
+  id: string;
+  status: string;
+  answers: {
+    generalAnswers?: Record<string, string>;
+    hypothesisAnswers?: Record<string, string>;
+  } | Record<string, string>;
+  aiCandidates?: Candidate[] | null;
+}
 
 const CONFIDENCE_LABELS: Record<string, { label: string; color: string }> = {
   HIGH: { label: "高", color: "bg-green-100 text-green-700" },
@@ -26,25 +48,104 @@ function HearingContent() {
   const processId = searchParams.get("processId") ?? "";
 
   const [process, setProcess] = useState<Process | null>(null);
+  const [categories, setCategories] = useState<MasterRecord[]>([]);
+  const [fields, setFields] = useState<DataFieldMasterRecord[]>([]);
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [hypothesisAnswers, setHypothesisAnswers] = useState<Record<string, string>>({});
   const [step, setStep] = useState<"hypotheses" | "hearing" | "candidates">("hypotheses");
   const [generatingHypotheses, setGeneratingHypotheses] = useState(false);
   const [generatingCandidates, setGeneratingCandidates] = useState(false);
-  const [candidates, setCandidates] = useState<unknown[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loadingSavedHearing, setLoadingSavedHearing] = useState(true);
+  const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
     if (!processId) return;
-    fetch(`/api/register/processes`)
-      .then((r) => r.json())
-      .then((procs: Process[]) => {
+    Promise.all([
+      fetch("/api/register/processes").then((r) => r.json()),
+      fetch(`/api/register/hearing?processId=${processId}`).then((r) => r.json()),
+      fetch("/api/master/data-categories").then((r) => r.json()),
+      fetch("/api/master/data-fields").then((r) => r.json()),
+    ])
+      .then(([procs, hearingRows, categoryRows, fieldRows]: [Process[], HearingRecord[], MasterRecord[], DataFieldMasterRecord[]]) => {
         const p = procs.find((x) => x.id === processId);
         if (p) setProcess(p);
-      });
+        setCategories(categoryRows);
+        setFields(fieldRows);
+
+        const existing = hearingRows[0];
+        if (existing?.answers) {
+          if (
+            typeof existing.answers === "object" &&
+            ("generalAnswers" in existing.answers || "hypothesisAnswers" in existing.answers)
+          ) {
+            setAnswers(
+              typeof existing.answers.generalAnswers === "object" && existing.answers.generalAnswers
+                ? existing.answers.generalAnswers
+                : {}
+            );
+            setHypothesisAnswers(
+              typeof existing.answers.hypothesisAnswers === "object" && existing.answers.hypothesisAnswers
+                ? existing.answers.hypothesisAnswers
+                : {}
+            );
+          } else {
+            setAnswers(existing.answers as Record<string, string>);
+          }
+        }
+
+        if (existing?.aiCandidates?.length) {
+          setCandidates(existing.aiCandidates);
+        }
+      })
+      .finally(() => setLoadingSavedHearing(false));
   }, [processId]);
+
+  useEffect(() => {
+    if (!saveMessage) return;
+    const timeoutId = window.setTimeout(() => setSaveMessage(""), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [saveMessage]);
+
+  async function persistHearing(status: "DRAFT" | "SUBMITTED", nextCandidates?: Candidate[]) {
+    if (!process) return false;
+
+    const res = await fetch("/api/register/hearing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessProcessId: process.id,
+        status,
+        answers: {
+          generalAnswers: answers,
+          hypothesisAnswers,
+        },
+        aiCandidates: nextCandidates,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ error: "ヒアリングの保存に失敗しました。" }));
+      throw new Error(data.error ?? "ヒアリングの保存に失敗しました。");
+    }
+
+    return true;
+  }
+
+  async function handleSaveDraft() {
+    try {
+      setSaving(true);
+      await persistHearing("DRAFT");
+      setSaveMessage("ヒアリング内容を保存しました。");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "ヒアリングの保存に失敗しました。");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function generateHypotheses() {
     if (!process) return;
@@ -94,10 +195,12 @@ function HearingContent() {
       const data = await res.json();
       if (data.candidates) {
         setCandidates(data.candidates);
+        await persistHearing("SUBMITTED", data.candidates);
+        setSaveMessage("ヒアリング内容を保存し、台帳候補を生成しました。");
         setStep("candidates");
       }
-    } catch {
-      alert("AI台帳候補生成に失敗しました。");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "AI台帳候補生成に失敗しました。");
     }
     setGeneratingCandidates(false);
   }
@@ -105,17 +208,7 @@ function HearingContent() {
   async function saveToRegister() {
     if (!process) return;
     setSaving(true);
-    for (const c of candidates as Array<{
-      dataSubject: string;
-      dataCategories: string[];
-      purpose: string;
-      legalBasis: string;
-      retentionPeriod: string;
-      storageLocation: string;
-      thirdPartyProvision?: string;
-      confirmationStatus?: string;
-      inferenceBasis?: string;
-    }>) {
+    for (const c of candidates) {
       await fetch("/api/register/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,12 +230,20 @@ function HearingContent() {
     );
   }
 
+  const { categoriesByCode, fieldsByCode } = buildPersonalDataMasterMaps(categories, fields);
+
   return (
     <div>
       <PageHeader
         title="ヒアリング・台帳候補生成"
         description={process ? `${process.name} のヒアリングを実施し、AI支援で台帳候補を生成します。` : ""}
       />
+
+      {saveMessage && (
+        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {saveMessage}
+        </div>
+      )}
 
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-6">
@@ -167,7 +268,7 @@ function HearingContent() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm font-medium text-amber-800 mb-1">AI仮説生成について</p>
             <p className="text-xs text-amber-700">
-              業務プロセスの説明をもとに、Claudeがヒアリング前に確認すべき論点と仮説を生成します。
+              業務プロセスの説明をもとに、Gemini がヒアリング前に確認すべき論点と仮説を生成します。
               仮説に答えながらヒアリングを進めると、より精度の高い台帳候補が生成されます。
             </p>
           </div>
@@ -181,7 +282,7 @@ function HearingContent() {
               >
                 {generatingHypotheses ? "AI仮説を生成中..." : "✨ AI仮説を生成する"}
               </button>
-              <p className="text-xs text-slate-400 mt-3">Claude APIを使用します（数秒かかります）</p>
+              <p className="text-xs text-slate-400 mt-3">Gemini APIを使用します（数秒かかります）</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -223,6 +324,11 @@ function HearingContent() {
       {/* Step 2: Hearing Questions */}
       {step === "hearing" && (
         <div className="space-y-4">
+          {loadingSavedHearing && (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+              保存済みヒアリングを読み込んでいます...
+            </div>
+          )}
           {HEARING_QUESTIONS.map((q) => (
             <div key={q} className="bg-white rounded-xl border border-slate-200 p-4">
               <label className="block text-sm font-medium text-slate-700 mb-2">{q}</label>
@@ -236,15 +342,24 @@ function HearingContent() {
             </div>
           ))}
           <div className="flex justify-between">
-            <button onClick={() => setStep("hypotheses")} className="text-sm text-slate-500 hover:text-slate-700">
-              ← 戻る
-            </button>
+            <div className="flex items-center gap-4">
+              <button onClick={() => setStep("hypotheses")} className="text-sm text-slate-500 hover:text-slate-700">
+                ← 戻る
+              </button>
+              <button
+                onClick={handleSaveDraft}
+                disabled={saving}
+                className="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
+              >
+                {saving ? "保存中..." : "ヒアリングを保存"}
+              </button>
+            </div>
             <button
               onClick={generateCandidates}
               disabled={generatingCandidates}
               className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
-              {generatingCandidates ? "AI台帳候補を生成中..." : "✨ AI台帳候補を生成する"}
+              {generatingCandidates ? "AI台帳候補を生成中..." : "✨ 保存して台帳候補を生成"}
             </button>
           </div>
         </div>
@@ -258,17 +373,7 @@ function HearingContent() {
             <p className="text-xs text-green-700">内容を確認し、「台帳に追加」ボタンで正式な台帳に登録してください。登録後は台帳一覧で編集・承認申請が可能です。</p>
           </div>
 
-          {(candidates as Array<{
-            dataSubject: string;
-            dataCategories: string[];
-            purpose: string;
-            legalBasis: string;
-            retentionPeriod: string;
-            storageLocation: string;
-            thirdPartyProvision?: string;
-            confirmationStatus?: string;
-            inferenceBasis?: string;
-          }>).map((c, i) => (
+          {candidates.map((c, i) => (
             <div key={i} className={`bg-white rounded-xl border p-4 ${c.confirmationStatus === "INFERRED" ? "border-yellow-200 bg-yellow-50/30" : "border-slate-200"}`}>
               <div className="flex items-center gap-2 mb-3">
                 <h3 className="text-sm font-semibold text-slate-800">{c.dataSubject}</h3>
@@ -281,7 +386,8 @@ function HearingContent() {
                 </span>
               </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                <div><dt className="text-slate-400 mb-0.5">個人情報カテゴリ</dt><dd className="text-slate-700">{c.dataCategories?.join("、")}</dd></div>
+                <div><dt className="text-slate-400 mb-0.5">個人情報区分</dt><dd className="text-slate-700">{formatCodes(c.dataCategoryCodes ?? [], categoriesByCode)}</dd></div>
+                <div><dt className="text-slate-400 mb-0.5">個人情報項目</dt><dd className="text-slate-700">{formatCodes(c.dataFieldCodes ?? [], fieldsByCode)}</dd></div>
                 <div><dt className="text-slate-400 mb-0.5">利用目的</dt><dd className="text-slate-700">{c.purpose}</dd></div>
                 <div><dt className="text-slate-400 mb-0.5">法的根拠</dt><dd className="text-slate-700">{c.legalBasis}</dd></div>
                 <div><dt className="text-slate-400 mb-0.5">保存期間</dt><dd className="text-slate-700">{c.retentionPeriod}</dd></div>
