@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+
+  // 基本情報
+  industry        String?   // 業種
+  mainBusiness    String?   // 主要事業内容
+  employeeCount   String?   // 従業員規模（例：50〜200名）
+  establishedYear String?   // 設立年
+  capital         String?   // 資本金
+  representative  String?   // 代表者名
+  address         String?   // 所在地
+  phone           String?   // 電話番号
+  websiteUrl      String?   // WebサイトURL
+
+  // Pマーク管理
+  pmarkNumber     String?   // Pマーク番号
+  pmarkExpiry     DateTime? // 有効期限
+  certifyingBody  String?   // 審査機関
+
+  // AI調査結果キャッシュ
+  aiProfileSummary  String?   // AI生成の会社像サマリー
+  aiResearchSources String?   // JSON: [{title, url, snippet}]
+  aiResearchedAt    DateTime? // 最終調査日時
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments       Department[]
+  users             User[]
+  businessProcesses BusinessProcess[]
+  researchProfiles  ResearchProfile[]
+}
+
+model Department {
+  id             String   @id @default(cuid())
+  name           String
+  code           String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization      Organization    @relation(fields: [organizationId], references: [id])
+  users             User[]
+  businessProcesses BusinessProcess[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  role           String   // PRIVACY_OFFICER | DEPT_STAFF | TOP_MANAGEMENT | GLOBAL_ADMIN | AUDITOR
+  departmentId   String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  auditLogs    AuditLog[]
+  aiUsageLogs  AiUsageLog[]
+}
+
+model BusinessProcess {
+  id             String   @id @default(cuid())
+  name           String
+  description    String
+  departmentId   String
+  organizationId String
+  status         String   @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  department    Department   @relation(fields: [departmentId], references: [id])
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  hearings      Hearing[]
+  registerItems RegisterItem[]
+}
+
+// ── 事前調査フロー ─────────────────────────────────────────────
+
+model ResearchProfile {
+  id             String   @id @default(cuid())
+  organizationId String
+  // 会社・業界の基本情報（AI推定 or 手動入力）
+  companyOverview  String?  // 事業概要
+  industryType     String?  // 業種
+  employeeCount    String?  // 従業員規模
+  mainServices     String?  // 主要サービス/製品
+  dataSubjectsEst  String?  // 推定データ主体（顧客・従業員・会員等）
+  systemsEst       String?  // 推定保有システム・DB
+  rawNotes         String?  // 調査メモ（自由記述）
+  aiSummary        String?  // AI生成サマリー
+  status           String   @default("DRAFT") // DRAFT | REVIEWED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  researchSources    ResearchSource[]
+  interviewHypotheses InterviewHypothesis[]
+}
+
+model ResearchSource {
+  id                String   @id @default(cuid())
+  researchProfileId String
+  sourceType        String   // WEBSITE | JOB_LISTING | NEWS | PUBLIC_DOC | MANUAL
+  url               String?
+  title             String
+  snippet           String?  // 引用テキスト
+  relevanceNote     String?  // このソースから何を読み取ったか
+  createdAt         DateTime @default(now())
+
+  researchProfile ResearchProfile @relation(fields: [researchProfileId], references: [id])
+}
+
+model InterviewHypothesis {
+  id                String   @id @default(cuid())
+  researchProfileId String
+  topic             String   // 確認論点（例：「顧客会員DBの保有有無」）
+  question          String   // 具体的な確認質問
+  hypothesis        String?  // AIの仮説（「おそらく保有していると推定」等）
+  confidenceLevel   String   @default("LOW") // HIGH | MEDIUM | LOW
+  priority          Int      @default(3)     // 1=最優先 〜 5=低優先度
+  basis             String?  // 仮説の根拠（ResearchSourceへの参照など）
+  answered          Boolean  @default(false)
+  answer            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  researchProfile ResearchProfile @relation(fields: [researchProfileId], references: [id])
+}
+
+// ── ヒアリング ─────────────────────────────────────────────────
+
+model Hearing {
+  id                String   @id @default(cuid())
+  businessProcessId String
+  submittedById     String?
+  status            String   @default("DRAFT") // DRAFT | SUBMITTED | REVIEWED
+  answers           String   // JSON形式で回答を格納
+  aiCandidates      String?  // JSON形式でAI生成候補を格納
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  businessProcess BusinessProcess @relation(fields: [businessProcessId], references: [id])
+}
+
+// ── 台帳 ────────────────────────────────────────────────────────
+
+model RegisterItem {
+  id                  String    @id @default(cuid())
+  businessProcessId   String
+  dataSubject         String    // データ主体（顧客・従業員等）
+  dataCategories      String    // JSON: カテゴリリスト
+  purpose             String    // 利用目的
+  legalBasis          String    // 法的根拠
+  retentionPeriod     String    // 保存期間
+  storageLocation     String    // 保存場所
+  thirdPartyProvision String    @default("NONE") // NONE | DOMESTIC | OVERSEAS
+
+  // 確定度ステータス
+  confirmationStatus  String    @default("UNCONFIRMED") // CONFIRMED | INFERRED | UNCONFIRMED
+  inferenceBasis      String?   // 推定根拠（ResearchSource/Hypothesis参照など）
+
+  // 承認ワークフロー
+  status              String    @default("DRAFT") // DRAFT | REVIEWING | PENDING_APPROVAL | APPROVED | REJECTED | LOCKED
+  version             Int       @default(1)
+  approvedById        String?
+  approvedAt          DateTime?
+  rejectionReason     String?
+  lockedAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  businessProcess BusinessProcess         @relation(fields: [businessProcessId], references: [id])
+  evidenceRecords EvidenceRecord[]
+  exportPackages  RegisterExportPackage[]
+}
+
+model EvidenceRecord {
+  id             String   @id @default(cuid())
+  registerItemId String?
+  type           String   // FILE | NOTE | CONSENT | TRAINING | AUDIT
+  title          String
+  description    String?
+  filePath       String?
+  fileSize       Int?
+  mimeType       String?
+  aiSummary      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  registerItem RegisterItem? @relation(fields: [registerItemId], references: [id])
+}
+
+model RegisterExportPackage {
+  id             String   @id @default(cuid())
+  registerItemId String
+  fileName       String
+  filePath       String
+  generatedById  String?
+  createdAt      DateTime @default(now())
+
+  registerItem RegisterItem @relation(fields: [registerItemId], references: [id])
+}
+
+model LegalRequirement {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  category    String    // LAW | GUIDELINE | STANDARD
+  source      String
+  effectiveAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model DataCategory {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  description String?
+  isSensitive Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  details    String?  // JSON
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model AiUsageLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  feature      String   // REGISTER_CANDIDATE | RISK_CANDIDATE | SUMMARIZE | CHAT | CHANGE_IMPACT | RESEARCH_PROFILE | INTERVIEW_HYPOTHESIS
+  inputTokens  Int?
+  outputTokens Int?
+  durationMs   Int?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
