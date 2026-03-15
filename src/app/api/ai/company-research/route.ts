@@ -3,15 +3,22 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGeminiClient, MODEL } from "@/lib/ai/gemini-client";
 import { prisma } from "@/lib/prisma";
+import { parseBody } from "@/lib/validations";
+import { companyResearchSchema } from "@/lib/validations/ai";
+import { sanitize } from "@/lib/validations/sanitize";
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { companyName, websiteUrl, industry } = body;
+  const parsed = parseBody(companyResearchSchema, body);
+  if (!parsed.success) return parsed.error;
 
-  if (!companyName) return NextResponse.json({ error: "companyName は必須です" }, { status: 400 });
+  const companyName = sanitize(parsed.data.companyName, 200);
+  const websiteUrl = parsed.data.websiteUrl ? sanitize(parsed.data.websiteUrl, 500) : undefined;
+  const industry = parsed.data.industry ? sanitize(parsed.data.industry, 200) : undefined;
 
   const prompt = `あなたはプライバシーマーク（JIS Q 15001）対応の個人情報保護コンサルタントです。
 以下の会社について Google 検索で調査し、個人情報保護マネジメントの観点から会社プロファイルを作成してください。
@@ -77,22 +84,41 @@ suggestedProcesses には、この会社が個人情報を取り扱う可能性�
     const profile = JSON.parse(jsonMatch[0]);
     const { suggestedProcesses, ...orgFields } = profile;
 
+    // AI出力バリデーション: フィールドの型と長さを検証
+    const truncStr = (val: unknown, maxLen: number): string | undefined => {
+      if (val === null || val === undefined) return undefined;
+      if (typeof val !== "string") return undefined;
+      return val.slice(0, maxLen) || undefined;
+    };
+
+    const validatedOrgFields = {
+      aiProfileSummary: truncStr(orgFields.aiProfileSummary, 2000),
+      industry: truncStr(orgFields.industry, 200),
+      mainBusiness: truncStr(orgFields.mainBusiness, 1000),
+      employeeCount: truncStr(orgFields.employeeCount, 200),
+      establishedYear: truncStr(orgFields.establishedYear, 50),
+      capital: truncStr(orgFields.capital, 200),
+      representative: truncStr(orgFields.representative, 200),
+      address: truncStr(orgFields.address, 500),
+      websiteUrl: truncStr(orgFields.websiteUrl, 500),
+    };
+
     // Save AI research results to organization
     await prisma.organization.update({
       where: { id: session.user.organizationId },
       data: {
-        aiProfileSummary: orgFields.aiProfileSummary,
-        aiResearchSources: JSON.stringify(sources),
+        aiProfileSummary: validatedOrgFields.aiProfileSummary,
+        aiResearchSources: JSON.stringify(sources).slice(0, 5000),
         aiResearchedAt: new Date(),
         // Auto-fill empty fields
-        industry: orgFields.industry || undefined,
-        mainBusiness: orgFields.mainBusiness || undefined,
-        employeeCount: orgFields.employeeCount || undefined,
-        establishedYear: orgFields.establishedYear || undefined,
-        capital: orgFields.capital || undefined,
-        representative: orgFields.representative || undefined,
-        address: orgFields.address || undefined,
-        websiteUrl: orgFields.websiteUrl || undefined,
+        industry: validatedOrgFields.industry,
+        mainBusiness: validatedOrgFields.mainBusiness,
+        employeeCount: validatedOrgFields.employeeCount,
+        establishedYear: validatedOrgFields.establishedYear,
+        capital: validatedOrgFields.capital,
+        representative: validatedOrgFields.representative,
+        address: validatedOrgFields.address,
+        websiteUrl: validatedOrgFields.websiteUrl,
       },
     });
 
@@ -115,5 +141,9 @@ suggestedProcesses には、この会社が個人情報を取り扱う可能性�
   } catch (err) {
     const msg = err instanceof Error ? err.message : "不明なエラー";
     return NextResponse.json({ error: msg }, { status: 500 });
+  }
+  } catch (error) {
+    console.error("POST /api/ai/company-research error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

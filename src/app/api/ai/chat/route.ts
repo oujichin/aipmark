@@ -5,13 +5,18 @@ import { getGeminiClient, MODEL } from "@/lib/ai/gemini-client";
 import { maskPII } from "@/lib/ai/pii-masker";
 import { buildSystemPrompt } from "@/lib/ai/prompts/chat";
 import { prisma } from "@/lib/prisma";
+import { parseBody } from "@/lib/validations";
+import { chatSchema } from "@/lib/validations/ai";
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { messages } = body; // Array of {role, content}
+  const parsed = parseBody(chatSchema, body);
+  if (!parsed.success) return parsed.error;
+  const { messages } = parsed.data;
 
   const [processCount, itemCount, approvedCount] = await Promise.all([
     prisma.businessProcess.count({ where: { organizationId: session.user.organizationId } }),
@@ -65,5 +70,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "不明なエラー";
     return NextResponse.json({ error: msg }, { status: 500 });
+  }
+  } catch (error) {
+    console.error("POST /api/ai/chat error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

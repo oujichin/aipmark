@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { DATA_CATEGORY_SEED, DATA_FIELD_DEFINITION_SEED } from "@/lib/personal-data";
+import { DATA_CATEGORY_SEED, DATA_FIELD_DEFINITION_SEED } from "../src/lib/personal-data";
 
 const prisma = new PrismaClient();
 

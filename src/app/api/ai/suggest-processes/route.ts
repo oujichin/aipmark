@@ -3,13 +3,18 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGeminiClient, MODEL } from "@/lib/ai/gemini-client";
 import { prisma } from "@/lib/prisma";
+import { parseBody } from "@/lib/validations";
+import { suggestProcessesSchema } from "@/lib/validations/ai";
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { profile } = body; // { industry, mainBusiness, employeeCount, aiProfileSummary }
+  const parsed = parseBody(suggestProcessesSchema, body);
+  if (!parsed.success) return parsed.error;
+  const { profile } = parsed.data;
 
   const prompt = `プライバシーマーク（JIS Q 15001）の観点から、以下の会社プロファイルに基づいて、
 個人情報を取り扱う業務プロセスを提案してください。
@@ -59,5 +64,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "不明なエラー";
     return NextResponse.json({ error: msg }, { status: 500 });
+  }
+  } catch (error) {
+    console.error("POST /api/ai/suggest-processes error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

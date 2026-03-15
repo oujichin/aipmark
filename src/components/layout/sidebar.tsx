@@ -68,6 +68,12 @@ const navItems = [
     badge: "予定",
   },
   {
+    label: "マネジメントレビュー",
+    href: "/reviews",
+    icon: "📊",
+    badge: "実装済",
+  },
+  {
     label: "申請・更新",
     href: "/application",
     icon: "📝",

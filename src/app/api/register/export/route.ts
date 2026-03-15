@@ -27,6 +27,7 @@ const THIRD_PARTY_LABELS: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -136,14 +137,28 @@ export async function GET(req: NextRequest) {
   });
 
   // Export package record
-  await prisma.registerExportPackage.create({
-    data: {
-      registerItemId: items[0]?.id ?? "none",
-      fileName: `個人情報取扱台帳_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      filePath: "memory",
-      generatedById: session.user.id,
-    },
-  }).catch(() => {}); // ignore if no items
+  if (items.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      const exportPkg = await tx.registerExportPackage.create({
+        data: {
+          registerItemId: items[0].id,
+          fileName: `個人情報取扱台帳_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          filePath: "memory",
+          generatedById: session.user.id,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: "EXPORT",
+          entityType: "RegisterExportPackage",
+          entityId: exportPkg.id,
+          details: JSON.stringify({ itemCount: items.length }),
+        },
+      });
+    });
+  }
 
   const buffer = await workbook.xlsx.writeBuffer();
 
@@ -154,4 +169,8 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
   });
+  } catch (error) {
+    console.error("GET /api/register/export error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }

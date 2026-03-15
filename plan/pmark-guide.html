@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 18mm 16mm 22mm 16mm; }
+  body { font-family: "Meiryo", "Yu Gothic", sans-serif; font-size: 10pt; line-height: 1.8; color: #1a1a1a; }
+  h1 { font-size: 22pt; text-align: center; color: #1b3a5c; margin-bottom: 4px; }
+  h2 { font-size: 15pt; color: #1b3a5c; border-bottom: 2.5px solid #1b3a5c; padding-bottom: 4px; margin-top: 32px; page-break-after: avoid; }
+  h3 { font-size: 12pt; color: #2c5282; margin-top: 22px; page-break-after: avoid; }
+  h4 { font-size: 10.5pt; color: #333; margin-top: 16px; page-break-after: avoid; }
+  .subtitle { text-align: center; font-size: 12pt; color: #666; margin-bottom: 50px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 16px 0; font-size: 9.5pt; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #e8eef4; font-weight: bold; color: #1b3a5c; }
+  .page-break { page-break-before: always; }
+  .box { background: #f0f7ff; border: 1px solid #b0c9e8; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .box-warn { background: #fff7ed; border: 1px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .box-green { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .box-red { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 14px 18px; margin: 14px 0; }
+  .highlight { border-left: 4px solid #3b82f6; padding: 10px 16px; margin: 12px 0; background: #fafbff; }
+  .example { background: #fefce8; border: 1px dashed #ca8a04; border-radius: 6px; padding: 12px 16px; margin: 10px 0; font-size: 9.5pt; }
+  ul, ol { margin: 6px 0; padding-left: 24px; }
+  li { margin-bottom: 4px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt; font-weight: bold; }
+  .tag-must { background: #fee2e2; color: #991b1b; }
+  .tag-should { background: #fef3c7; color: #92400e; }
+  .tag-nice { background: #dcfce7; color: #166534; }
+  .footer { text-align: center; font-size: 8pt; color: #999; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 6px; }
+  .toc { margin: 16px 0; }
+  .toc li { margin-bottom: 5px; list-style: none; font-size: 10pt; }
+  .toc li::before { content: "■ "; color: #1b3a5c; font-size: 8pt; }
+  .toc .sub { padding-left: 20px; }
+  .toc .sub::before { content: "└ "; color: #888; }
+  .flow-box { display: inline-block; background: #e0e7ff; border: 1px solid #818cf8; border-radius: 6px; padding: 6px 14px; margin: 4px; font-weight: bold; font-size: 9.5pt; }
+  .flow-arrow { display: inline-block; font-size: 14pt; margin: 0 4px; color: #6366f1; vertical-align: middle; }
+  .qa { margin: 8px 0; }
+  .qa-q { font-weight: bold; color: #1b3a5c; margin-bottom: 2px; }
+  .qa-a { margin-left: 16px; margin-bottom: 12px; }
+  .glossary td:first-child { font-weight: bold; width: 180px; white-space: nowrap; }
+  .checklist td:first-child { width: 30px; text-align: center; }
+  .num-circle { display: inline-block; width: 24px; height: 24px; border-radius: 50%; background: #1b3a5c; color: #fff; text-align: center; line-height: 24px; font-size: 9pt; font-weight: bold; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 表紙 ===== -->
+<div style="text-align:center; padding-top: 100px;">
+  <p style="font-size: 11pt; color: #888;">AIPmark5 プロジェクト 参考資料</p>
+  <h1 style="margin-top: 8px; font-size: 26pt;">プライバシーマーク<br>完全理解ガイド</h1>
+  <p class="subtitle">〜 素人からPマーク実務者になるための教科書 〜</p>
+  <div style="margin-top: 60px; font-size: 10pt; color: #666;">
+    <p>2026年3月12日</p>
+    <p>本書はPマーク制度を初めて学ぶ方のために、<br>制度の全体像から実務の詳細までを体系的にまとめたものです。</p>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 目次 ===== -->
+<h2 style="border:none; text-align:center;">目次</h2>
+<ul class="toc">
+  <li>第1章　そもそもPマークとは何か</li>
+  <li class="sub">1.1 一言で言うと / 1.2 なぜ必要か / 1.3 ISMSとの違い</li>
+  <li>第2章　個人情報の基礎知識</li>
+  <li class="sub">2.1 個人情報とは / 2.2 要配慮個人情報 / 2.3 特定個人情報 / 2.4 具体例</li>
+  <li>第3章　法律の全体像（個人情報保護法）</li>
+  <li class="sub">3.1 法律の構造 / 3.2 事業者の義務6本柱 / 3.3 罰則</li>
+  <li>第4章　JIS Q 15001 規格の読み方</li>
+  <li class="sub">4.1 規格の構造 / 4.2 条項マップ / 4.3 Pマーク審査基準との関係</li>
+  <li>第5章　PMS（個人情報保護マネジメントシステム）とは</li>
+  <li class="sub">5.1 PMSの全体像 / 5.2 PDCAサイクル / 5.3 組織体制 / 5.4 必要な文書</li>
+  <li>第6章　Pマーク取得の全ステップ</li>
+  <li class="sub">6.1 取得までの流れ / 6.2 各ステップ詳細 / 6.3 費用 / 6.4 期間</li>
+  <li>第7章　個人情報台帳（最も重要な書類）</li>
+  <li class="sub">7.1 台帳とは / 7.2 台帳の項目 / 7.3 作り方 / 7.4 よくある失敗</li>
+  <li>第8章　リスク分析のやり方</li>
+  <li class="sub">8.1 リスクとは / 8.2 ライフサイクル / 8.3 評価方法 / 8.4 対策</li>
+  <li>第9章　年次運用（取得後にやること）</li>
+  <li class="sub">9.1 教育 / 9.2 内部監査 / 9.3 マネジメントレビュー / 9.4 事故対応</li>
+  <li>第10章　審査の実際</li>
+  <li class="sub">10.1 審査の流れ / 10.2 よく指摘される点 / 10.3 合格のコツ</li>
+  <li>第11章　実務でよくあるQ&A 30選</li>
+  <li>第12章　用語集</li>
+  <li>付録A　必要書類チェックリスト</li>
+  <li>付録B　AIPmark5との対応表</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- ===== 第1章 ===== -->
+<h2>第1章　そもそもPマークとは何か</h2>
+
+<h3>1.1 一言で言うと</h3>
+<div class="box">
+  <strong>プライバシーマーク（Pマーク）</strong>とは、「うちの会社は個人情報をちゃんと守っていますよ」ということを、<strong>第三者機関（JIPDEC）が審査して認定するマーク</strong>です。
+</div>
+
+<p>スーパーで売っている食品に「JASマーク」がついているのと同じ発想です。</p>
+<ul>
+  <li>JASマーク → 「この食品は品質基準を満たしています」</li>
+  <li><strong>Pマーク</strong> → 「この会社は個人情報保護の基準を満たしています」</li>
+</ul>
+
+<p>正式には<strong>「プライバシーマーク制度」</strong>と呼び、一般財団法人<strong>日本情報経済社会推進協会（JIPDEC）</strong>が運営しています。</p>
+
+<h3>1.2 なぜ必要なのか</h3>
+
+<h4>ビジネス上の理由（これが最大の動機）</h4>
+<table>
+  <tr><th>理由</th><th>具体例</th></tr>
+  <tr><td><strong>取引先の要求</strong></td><td>「Pマーク持ってないと発注できません」と言われる。特にIT企業・BPO・人材派遣で多い</td></tr>
+  <tr><td><strong>入札・コンペの参加条件</strong></td><td>官公庁・大企業の入札でPマークが必須条件になっている</td></tr>
+  <tr><td><strong>信用力の証明</strong></td><td>名刺・Webサイト・提案書にPマークロゴを掲載できる</td></tr>
+  <tr><td><strong>事故時のリスク軽減</strong></td><td>万が一漏洩しても「適切な管理体制があった」ことの証明になる</td></tr>
+</table>
+
+<h4>法律上の理由</h4>
+<p>Pマーク自体は法律で義務付けられているわけではありません。ただし、Pマークの基準は<strong>個人情報保護法の要求を上回るレベル</strong>で設計されているため、Pマークを守っていれば法律違反になるリスクは大きく下がります。</p>
+
+<h3>1.3 ISMSとの違い</h3>
+<div class="box-warn">
+  よく混同される<strong>ISMS（ISO 27001）</strong>との違いを理解しましょう。
+</div>
+
+<table>
+  <tr><th>比較項目</th><th>Pマーク</th><th>ISMS（ISO 27001）</th></tr>
+  <tr><td>守る対象</td><td><strong>個人情報</strong>に特化</td><td>情報資産<strong>全般</strong>（技術情報、経営情報含む）</td></tr>
+  <tr><td>基準規格</td><td>JIS Q 15001（日本独自）</td><td>ISO/IEC 27001（国際規格）</td></tr>
+  <tr><td>認定範囲</td><td><strong>会社全体</strong>（部分取得不可）</td><td>部門・サービス単位でOK</td></tr>
+  <tr><td>有効期間</td><td><strong>2年</strong></td><td>3年（毎年サーベイランス審査）</td></tr>
+  <tr><td>運営機関</td><td>JIPDEC</td><td>各認証機関（BSI, JQAC等）</td></tr>
+  <tr><td>主な取得業種</td><td>IT、BPO、人材、教育</td><td>IT、製造、金融、全業種</td></tr>
+  <tr><td>費用感</td><td>30〜100万円</td><td>50〜200万円</td></tr>
+</table>
+
+<div class="highlight">
+  <strong>結論:</strong> 「お客様の個人情報を預かるビジネス」ならPマーク、「機密技術や社内情報も守りたい」ならISMSが向いています。両方取得する企業も多いです。
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 第2章 ===== -->
+<h2>第2章　個人情報の基礎知識</h2>
+
+<h3>2.1 個人情報とは</h3>
+<div class="box">
+  <strong>「生きている特定の人物を識別できる情報」</strong>が個人情報です。
+</div>
+
+<p>正確な定義は個人情報保護法第2条にありますが、ポイントは2つだけ:</p>
+<ol>
+  <li><strong>生存する個人</strong>の情報であること（亡くなった方は対象外）</li>
+  <li>その情報で<strong>誰かを特定できる</strong>こと（単独 or 他の情報と組み合わせて）</li>
+</ol>
+
+<h4>「これは個人情報？」判定フローチャート</h4>
+<table>
+  <tr><th>情報</th><th>単独で特定可能？</th><th>判定</th><th>理由</th></tr>
+  <tr><td>氏名</td><td>Yes</td><td><strong>個人情報</strong></td><td>それだけで誰か分かる</td></tr>
+  <tr><td>メールアドレス（名前入り）</td><td>Yes</td><td><strong>個人情報</strong></td><td>tanaka.hanako@... で特定可能</td></tr>
+  <tr><td>メールアドレス（ランダム文字列）</td><td>No</td><td>他と組み合わせれば<strong>個人情報</strong></td><td>会員DBと紐づけば特定可能</td></tr>
+  <tr><td>電話番号</td><td>場合による</td><td><strong>個人情報の可能性大</strong></td><td>電話帳等で特定可能</td></tr>
+  <tr><td>顧客番号（C-00123）</td><td>No</td><td>社内DBと紐づけば<strong>個人情報</strong></td><td>顧客マスタで特定可能</td></tr>
+  <tr><td>顔写真</td><td>Yes</td><td><strong>個人情報</strong></td><td>容貌で特定可能（個人識別符号）</td></tr>
+  <tr><td>マイナンバー</td><td>Yes</td><td><strong>特定個人情報</strong>（最も厳格）</td><td>法定の個人識別符号</td></tr>
+  <tr><td>部署の売上データ</td><td>No</td><td><strong>個人情報ではない</strong></td><td>個人を特定できない</td></tr>
+</table>
+
+<h3>2.2 要配慮個人情報（センシティブ情報）</h3>
+<div class="box-red">
+  <strong>不当な差別や偏見が生じる恐れがある情報</strong>は「要配慮個人情報」として特に厳格に管理する必要があります。<strong>本人の明示的な同意なく取得してはいけません。</strong>
+</div>
+
+<table>
+  <tr><th>種類</th><th>具体例</th></tr>
+  <tr><td>人種・民族</td><td>出身地、国籍に関する情報</td></tr>
+  <tr><td>信条</td><td>政治的意見、宗教</td></tr>
+  <tr><td>社会的身分</td><td>被差別部落出身等</td></tr>
+  <tr><td>病歴・健康情報</td><td>診断書、健康診断結果、障害等級</td></tr>
+  <tr><td>犯罪歴</td><td>前科、逮捕歴</td></tr>
+  <tr><td>犯罪被害歴</td><td>被害者であった事実</td></tr>
+</table>
+
+<div class="example">
+  <strong>実務での注意:</strong> 健康診断結果を人事部が保管 → 要配慮個人情報。採用時に病歴を聞く → 本人同意が必要。社内の障害者雇用データ → 要配慮個人情報。これらはすべて台帳に記載し、特別な管理措置が必要です。
+</div>
+
+<h3>2.3 特定個人情報</h3>
+<p><strong>マイナンバーを含む個人情報</strong>のことです。個人情報の中で最も厳格な規制がかかります。</p>
+<ul>
+  <li>目的外利用は<strong>一切禁止</strong>（通常の個人情報は本人同意があればOK）</li>
+  <li>第三者提供は<strong>原則禁止</strong>（法律で定められた場合のみ）</li>
+  <li>保管期限を過ぎたら<strong>速やかに廃棄</strong></li>
+</ul>
+
+<h3>2.4 個人情報の具体例（業種別）</h3>
+<table>
+  <tr><th>業種</th><th>持っている個人情報の例</th></tr>
+  <tr><td>IT企業</td><td>従業員情報、顧客企業の担当者情報、ユーザーアカウント、アクセスログ</td></tr>
+  <tr><td>人材派遣</td><td>登録者の履歴書・職務経歴、派遣先担当者、給与情報、マイナンバー</td></tr>
+  <tr><td>ECサイト運営</td><td>購入者の氏名・住所・電話番号、クレジットカード番号、購買履歴</td></tr>
+  <tr><td>医療・介護</td><td>患者のカルテ、保険証番号、診療記録、要介護認定情報</td></tr>
+  <tr><td>教育機関</td><td>学生の成績、保護者連絡先、健康診断結果、奨学金情報</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 第3章 ===== -->
+<h2>第3章　法律の全体像（個人情報保護法）</h2>
+
+<h3>3.1 法律の構造</h3>
+<p>Pマークを理解するには、まず土台となる<strong>個人情報保護法</strong>を知る必要があります。</p>
+
+<div class="box">
+  個人情報保護法は「個人情報を取り扱うすべての事業者」に適用される法律です。2003年制定、2015年大改正、2022年改正で現在の形に。<strong>従業員1人の会社でも適用されます。</strong>
+</div>
+
+<h3>3.2 事業者の義務 6本柱</h3>
+<table>
+  <tr><th>#</th><th>義務</th><th>かみ砕くと</th><th>具体例</th></tr>
+  <tr>
+    <td><span class="num-circle">1</span></td>
+    <td><strong>利用目的の特定・通知</strong></td>
+    <td>何のために使うか決めて、本人に伝える</td>
+    <td>プライバシーポリシーの掲載、取得時の目的明示</td>
+  </tr>
+  <tr>
+    <td><span class="num-circle">2</span></td>
+    <td><strong>適正な取得</strong></td>
+    <td>ウソをついたり、だまして集めない</td>
+    <td>同意なく要配慮情報を取得しない</td>
+  </tr>
+  <tr>
+    <td><span class="num-circle">3</span></td>
+    <td><strong>正確性の確保</strong></td>
+    <td>データは正しい状態に保つ</td>
+    <td>古い住所のまま放置しない、不要データは消す</td>
+  </tr>
+  <tr>
+    <td><span class="num-circle">4</span></td>
+    <td><strong>安全管理措置</strong></td>
+    <td>漏えい・紛失を防ぐ対策をする</td>
+    <td>アクセス制御、暗号化、施錠、従業員教育</td>
+  </tr>
+  <tr>
+    <td><span class="num-circle">5</span></td>
+    <td><strong>第三者提供の制限</strong></td>
+    <td>勝手に他社に渡さない</td>
+    <td>本人同意なく名簿を売らない、委託先は契約で縛る</td>
+  </tr>
+  <tr>
+    <td><span class="num-circle">6</span></td>
+    <td><strong>本人関与の保証</strong></td>
+    <td>本人が「見せて」「消して」と言えるようにする</td>
+    <td>開示請求・訂正請求・利用停止請求への対応体制</td>
+  </tr>
+</table>
+
+<h3>3.3 罰則</h3>
+<table>
+  <tr><th>違反内容</th><th>罰則</th></tr>
+  <tr><td>個人情報保護委員会の命令に違反</td><td>1年以下の懲役 or 100万円以下の罰金（法人は1億円以下）</td></tr>
+  <tr><td>不正な利益目的で個人情報を提供・盗用</td><td>1年以下の懲役 or 50万円以下の罰金</td></tr>
+  <tr><td>虚偽報告・検査妨害</td><td>50万円以下の罰金</td></tr>
+</table>
+
+<div class="box-warn">
+  <strong>2022年改正のポイント:</strong> 漏えい等が発生した場合、個人情報保護委員会への<strong>報告</strong>と本人への<strong>通知</strong>が<strong>義務化</strong>されました（速報3〜5日以内、確報30日以内）。これはPマークの事故対応（M-08）に直結します。
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 第4章 ===== -->
+<h2>第4章　JIS Q 15001 規格の読み方</h2>
+
+<h3>4.1 規格の構造</h3>
+<div class="box">
+  <strong>JIS Q 15001</strong>は「個人情報保護マネジメントシステム（PMS）の要求事項」を定めた<strong>日本産業規格</strong>です。Pマーク審査はこの規格への適合を確認します。
+</div>
+
+<p>最新版は<strong>JIS Q 15001:2023</strong>です。構成は以下の通り:</p>
+
+<table>
+  <tr><th>箇条</th><th>内容</th><th>かみ砕くと</th></tr>
+  <tr><td>4.1</td><td>組織の状況</td><td>自社の立場・環境を理解する</td></tr>
+  <tr><td>4.2</td><td>リーダーシップ</td><td>社長が「やるぞ」と宣言し、体制を作る</td></tr>
+  <tr><td>4.3</td><td>計画（Plan）</td><td>リスクを洗い出し、対策を計画する</td></tr>
+  <tr><td>4.4</td><td>支援・運用（Do）</td><td>教育、文書管理、実際の運用を行う</td></tr>
+  <tr><td>4.5</td><td>—</td><td>（JIS Q 15001:2023では欠番）</td></tr>
+  <tr><td>4.6</td><td>パフォーマンス評価（Check）</td><td>内部監査・マネジメントレビューで点検する</td></tr>
+  <tr><td>4.7</td><td>改善（Act）</td><td>問題を是正し、継続的に改善する</td></tr>
+</table>
+
+<h3>4.2 条項マップ — Pマーク審査で特に重要な箇所</h3>
+<table>
+  <tr><th>条項</th><th>審査での重要度</th><th>内容</th><th>AIPmark5対応モジュール</th></tr>
+  <tr><td>J.4.3.2</td><td><span class="tag tag-must">最重要</span></td><td>個人情報の特定・リスク分析</td><td>M-02 台帳 + M-03 リスク</td></tr>
+  <tr><td>J.4.3.3</td><td><span class="tag tag-must">最重要</span></td><td>内部規程の整備</td><td>M-04 文書管理</td></tr>
+  <tr><td>J.4.3.4</td><td><span class="tag tag-must">最重要</span></td><td>安全管理措置</td><td>M-03 リスク（対策管理）</td></tr>
+  <tr><td>J.4.3.7</td><td><span class="tag tag-should">重要</span></td><td>委託先の管理</td><td>M-06 委託先管理</td></tr>
+  <tr><td>J.4.3.10</td><td><span class="tag tag-should">重要</span></td><td>緊急事態への対応</td><td>M-08 事故対応</td></tr>
+  <tr><td>J.4.4.2</td><td><span class="tag tag-must">最重要</span></td><td>教育</td><td>M-05 教育管理</td></tr>
+  <tr><td>J.4.4.5</td><td><span class="tag tag-should">重要</span></td><td>文書化した情報の管理</td><td>M-04 文書管理</td></tr>
+  <tr><td>J.4.6.2</td><td><span class="tag tag-must">最重要</span></td><td>内部監査</td><td>M-07 監査・是正</td></tr>
+  <tr><td>J.4.6.3</td><td><span class="tag tag-must">最重要</span></td><td>マネジメントレビュー</td><td>M-11 マネジメントレビュー</td></tr>
+  <tr><td>J.4.7</td><td><span class="tag tag-should">重要</span></td><td>継続的改善</td><td>M-07 是正処置</td></tr>
+</table>
+
+<h3>4.3 Pマーク審査基準との関係</h3>
+<div class="highlight">
+  審査は「JIS Q 15001の要求事項を満たしているか」をチェックしますが、具体的なチェック項目はJIPDECが定める<strong>「プライバシーマークにおける個人情報保護マネジメントシステム構築・運用指針」</strong>（通称「構築・運用指針」）に基づきます。これが実質的な審査基準です。
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 第5章 ===== -->
+<h2>第5章　PMS（個人情報保護マネジメントシステム）とは</h2>
+
+<h3>5.1 PMSの全体像</h3>
+<div class="box">
+  PMSとは「個人情報を守るための社内の仕組み全体」のことです。ルール（規程）、組織体制、教育、監査、見直し…これらをまとめて「マネジメントシステム」と呼びます。
+</div>
+
+<p>PMSは単なる書類の束ではありません。<strong>「会社として個人情報保護を継続的に改善していく仕組み」</strong>です。</p>
+
+<h3>5.2 PDCAサイクル — PMSの心臓部</h3>
+<p>PMSは<strong>PDCAサイクル</strong>で回します。これが最も重要な概念です。</p>
+
+<table>
+  <tr><th style="width:60px">Phase</th><th>やること</th><th>具体的な活動</th><th>対応モジュール</th></tr>
+  <tr>
+    <td style="background:#dbeafe;text-align:center;font-weight:bold;font-size:14pt;">P</td>
+    <td><strong>Plan<br>（計画）</strong></td>
+    <td>
+      ・個人情報の洗い出し（台帳作成）<br>
+      ・リスク分析・対策の計画<br>
+      ・内部規程・マニュアルの整備<br>
+      ・教育計画の策定
+    </td>
+    <td>M-02, M-03, M-04</td>
+  </tr>
+  <tr>
+    <td style="background:#dcfce7;text-align:center;font-weight:bold;font-size:14pt;">D</td>
+    <td><strong>Do<br>（実行）</strong></td>
+    <td>
+      ・規程に基づく日常運用<br>
+      ・従業員教育の実施<br>
+      ・委託先の管理<br>
+      ・事故発生時の対応
+    </td>
+    <td>M-05, M-06, M-08</td>
+  </tr>
+  <tr>
+    <td style="background:#fef3c7;text-align:center;font-weight:bold;font-size:14pt;">C</td>
+    <td><strong>Check<br>（点検）</strong></td>
+    <td>
+      ・内部監査の実施<br>
+      ・運用状況の確認<br>
+      ・不適合の発見
+    </td>
+    <td>M-07</td>
+  </tr>
+  <tr>
+    <td style="background:#fee2e2;text-align:center;font-weight:bold;font-size:14pt;">A</td>
+    <td><strong>Act<br>（改善）</strong></td>
+    <td>
+      ・マネジメントレビュー<br>
+      ・是正処置の実施<br>
+      ・次年度計画への反映<br>
+      ・Pマーク更新申請
+    </td>
+    <td>M-11, M-09</td>
+  </tr>
+</table>
+
+<div class="box-green">
+  <strong>ポイント:</strong> 審査では「PDCAを<strong>1回以上回した実績</strong>」が求められます。つまり、規程を作っただけではダメで、実際に教育をやり、監査をやり、見直しをした記録が必要です。新規取得でも最低<strong>2〜3ヶ月の運用実績</strong>が必要です。
+</div>
+
+<h3>5.3 組織体制 — 誰が何をやるか</h3>
+<table>
+  <tr><th>役職</th><th>誰がやる？</th><th>責任</th></tr>
+  <tr>
+    <td><strong>代表者<br>（トップマネジメント）</strong></td>
+    <td>社長・代表取締役</td>
+    <td>PMS全体の最終責任者。個人情報保護方針を承認。マネジメントレビューの主催。リソース確保</td>
+  </tr>
+  <tr>
+    <td><strong>個人情報保護管理者</strong></td>
+    <td>役員クラス or 部長（兼務可）</td>
+    <td>PMSの実務責任者。台帳管理、リスク分析、教育計画、事故対応の統括。<strong>Pマークの実質的な推進者</strong></td>
+  </tr>
+  <tr>
+    <td><strong>個人情報保護監査責任者</strong></td>
+    <td>管理者と<strong>別の人</strong></td>
+    <td>内部監査の計画・実施。管理者から独立していることが必須（自分で自分を監査しない）</td>
+  </tr>
+  <tr>
+    <td><strong>各部門の個人情報管理者</strong></td>
+    <td>各部門の長 or 担当者</td>
+    <td>部門内の個人情報管理、台帳のメンテナンス、ヒアリング対応</td>
+  </tr>
+  <tr>
+    <td><strong>一般従業者</strong></td>
+    <td>全従業員</td>
+    <td>規程の遵守、教育の受講、事故の報告</td>
+  </tr>
+</table>
+
+<div class="example">
+  <strong>AIPmark5のデモユーザーとの対応:</strong><br>
+  ・田中花子（PRIVACY_OFFICER）= 個人情報保護管理者<br>
+  ・鈴木一郎（DEPT_STAFF）= 部門の個人情報管理者/一般従業者<br>
+  ・佐藤社長（TOP_MANAGEMENT）= 代表者（トップマネジメント）
+</div>
+
+<h3>5.4 PMSに必要な文書一覧</h3>
+<table>
+  <tr><th>文書名</th><th>内容</th><th>必須度</th></tr>
+  <tr><td><strong>個人情報保護方針</strong></td><td>会社の個人情報保護に対する基本姿勢。Webサイトに公表</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td><strong>個人情報保護規程</strong></td><td>PMSのルール全体をまとめた社内規程（最も重要な文書）</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td><strong>個人情報管理台帳</strong></td><td>全個人情報の一覧と管理状況</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td><strong>リスク分析表</strong></td><td>リスクの特定・評価・対策の記録</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td><strong>教育計画・実施記録</strong></td><td>教育の内容、対象者、実施日、受講記録</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td><strong>内部監査報告書</strong></td><td>監査の実施日、対象、発見事項、是正措置</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td><strong>マネジメントレビュー議事録</strong></td><td>代表者による見直しの記録</td><td><span class="tag tag-must">必須</span></td></tr>
+  <tr><td>委託先管理台帳</td><td>委託先の一覧、評価結果、契約状況</td><td><span class="tag tag-should">委託ありなら必須</span></td></tr>
+  <tr><td>事故対応報告書</td><td>事故の内容、対応、再発防止策</td><td><span class="tag tag-should">事故発生時</span></td></tr>
+  <tr><td>苦情対応記録</td><td>本人からの苦情と対応の記録</td><td><span class="tag tag-should">苦情発生時</span></td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 第6章 ===== -->
+<h2>第6章　Pマーク取得の全ステップ</h2>
+
+<h3>6.1 取得までの流れ（全体像）</h3>
+
+<p style="text-align:center; margin: 20px 0;">
+  <span class="flow-box">① 体制構築</span><span class="flow-arrow">→</span>
+  <span class="flow-box">② 規程整備</span><span class="flow-arrow">→</span>
+  <span class="flow-box">③ 台帳作成</span><span class="flow-arrow">→</span>
+  <span class="flow-box">④ リスク分析</span><span class="flow-arrow">→</span>
+  <span class="flow-box">⑤ 運用開始</span>
+</p>
+<p style="text-align:center; margin: 10px 0;">
+  <span class="flow-arrow">→</span>
+  <span class="flow-box">⑥ 教育</span><span class="flow-arrow">→</span>
+  <span class="flow-box">⑦ 内部監査</span><span class="flow-arrow">→</span>
+  <span class="flow-box">⑧ MR</span><span class="flow-arrow">→</span>
+  <span class="flow-box">⑨ 申請</span><span class="flow-arrow">→</span>
+  <span class="flow-box">⑩ 審査</span><span class="flow-arrow">→</span>
+  <span class="flow-box">🎉 取得</span>
+</p>
+
+<h3>6.2 各ステップの詳細</h3>
+
+<h4>① 体制構築（1〜2週間）</h4>
+<ul>
+  <li>代表者が「Pマークを取得する」と決定・宣言</li>
+  <li>個人情報保護管理者、監査責任者を任命</li>
+  <li>各部門の担当者を決定</li>
+  <li>プロジェクト計画を策定</li>
+</ul>
+
+<h4>② 規程整備（2〜4週間）</h4>
+<ul>
+  <li>個人情報保護方針の策定（Webサイト掲載用）</li>
+  <li>個人情報保護規程の作成（JIS Q 15001の要求事項を網羅）</li>
+  <li>各種手順書・様式の整備</li>
+</ul>
+<div class="example">
+  <strong>ヒント:</strong> コンサルタント会社からテンプレートを購入するケースが多い（5〜30万円）。自社の実態に合わせてカスタマイズすることが重要。テンプレそのままだと審査で「実態と合っていない」と指摘される。
+</div>
+
+<h4>③ 台帳作成（2〜4週間）— 最も手間がかかる</h4>
+<ul>
+  <li>全部門にヒアリングして個人情報を洗い出す</li>
+  <li>業務プロセス単位で個人情報を特定する</li>
+  <li>台帳に必要な項目（後述）を埋める</li>
+</ul>
+
+<h4>④ リスク分析（2〜3週間）</h4>
+<ul>
+  <li>台帳の各項目についてリスクを評価</li>
+  <li>取得→利用→保管→提供→委託→廃棄の各段階で脅威を分析</li>
+  <li>対策（安全管理措置）を策定</li>
+</ul>
+
+<h4>⑤ 運用開始（最低2〜3ヶ月）</h4>
+<ul>
+  <li>規程に基づいた日常業務の実施</li>
+  <li>委託先との契約見直し</li>
+  <li>同意書・通知書のフォーマット整備</li>
+</ul>
+
+<h4>⑥ 教育（1〜2日 + 準備期間）</h4>
+<ul>
+  <li><strong>全従業員</strong>が対象（パート・アルバイト含む）</li>
+  <li>内容: 個人情報保護法の基礎、社内規程、事故時の対応、罰則</li>
+  <li>受講記録を残す（出席簿、テスト結果）</li>
+  <li>理解度テストを実施（推奨）</li>
+</ul>
+
+<h4>⑦ 内部監査（1〜2週間）</h4>
+<ul>
+  <li>監査計画の策定</li>
+  <li>チェックリストに基づく全部門の監査</li>
+  <li>不適合の記録と是正要求</li>
+  <li><strong>注意:</strong> 監査員は自部門を監査できない</li>
+</ul>
+
+<h4>⑧ マネジメントレビュー（MR）（1日）</h4>
+<ul>
+  <li>代表者が出席する必須の会議</li>
+  <li>インプット: 監査結果、教育実施状況、事故報告、改善提案</li>
+  <li>アウトプット: 改善指示、来期の方針決定</li>
+  <li>議事録を残す</li>
+</ul>
+
+<h4>⑨ 申請（2〜3週間）</h4>
+<ul>
+  <li>JIPDEC（または審査機関）に申請書類を提出</li>
+  <li>申請料の支払い</li>
+</ul>
+
+<h4>⑩ 審査（1〜3ヶ月）</h4>
+<ul>
+  <li><strong>文書審査:</strong> 提出した規程・記録の審査（1〜2ヶ月）</li>
+  <li><strong>現地審査:</strong> 審査員が訪問してインタビュー・現場確認（1日）</li>
+  <li>指摘事項への回答・是正</li>
+  <li>合格 → Pマーク付与</li>
+</ul>
+
+<h3>6.3 費用の目安</h3>
+<table>
+  <tr><th>項目</th><th>新規取得</th><th>更新（2年ごと）</th></tr>
+  <tr><td>JIPDEC審査費用（小規模）</td><td>約30万円</td><td>約22万円</td></tr>
+  <tr><td>JIPDEC審査費用（中規模）</td><td>約48万円</td><td>約36万円</td></tr>
+  <tr><td>コンサルティング費用（任意）</td><td>30〜150万円</td><td>10〜50万円</td></tr>
+  <tr><td>合計目安</td><td><strong>60〜200万円</strong></td><td><strong>30〜90万円</strong></td></tr>
+</table>
+<p>※ 企業規模（従業員数）によって審査費用が変わります。</p>
+
+<h3>6.4 期間の目安</h3>
+<table>
+  <tr><th>パターン</th><th>準備期間</th><th>審査期間</th><th>合計</th></tr>
+  <tr><td>コンサル利用あり</td><td>3〜6ヶ月</td><td>2〜3ヶ月</td><td><strong>5〜9ヶ月</strong></td></tr>
+  <tr><td>自力で取得</td><td>6〜12ヶ月</td><td>2〜3ヶ月</td><td><strong>8〜15ヶ月</strong></td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 第7章 ===== -->
+<h2>第7章　個人情報管理台帳（最も重要な書類）</h2>
+
+<h3>7.1 台帳とは</h3>
+<div class="box">
+  <strong>個人情報管理台帳</strong>は「会社が持っている全個人情報の一覧表」です。<strong>Pマーク審査で最も重視される文書</strong>であり、すべてのリスク分析・対策の基礎になります。
+</div>
+
+<p>イメージとしては「個人情報の棚卸し表」です。倉庫の在庫管理表のように、「何が」「どこに」「いくつ」あるかを把握します。</p>
+
+<h3>7.2 台帳に記載する項目</h3>
+<table>
+  <tr><th>#</th><th>項目</th><th>記載例</th><th>なぜ必要か</th></tr>
+  <tr><td>1</td><td><strong>個人情報の名称</strong></td><td>顧客連絡先情報</td><td>何を管理しているか</td></tr>
+  <tr><td>2</td><td><strong>管理部門</strong></td><td>営業部</td><td>責任の所在を明確に</td></tr>
+  <tr><td>3</td><td><strong>利用目的</strong></td><td>契約履行・アフターサービス</td><td>法律の義務</td></tr>
+  <tr><td>4</td><td><strong>対象者（本人）の種別</strong></td><td>顧客、従業員、取引先担当者</td><td>誰の情報か</td></tr>
+  <tr><td>5</td><td><strong>含まれる個人情報の項目</strong></td><td>氏名、住所、電話番号、メール</td><td>リスク分析の基礎</td></tr>
+  <tr><td>6</td><td><strong>個人情報の件数</strong></td><td>約3,000件</td><td>漏洩時の影響度判断</td></tr>
+  <tr><td>7</td><td><strong>要配慮・特定の有無</strong></td><td>なし / あり（健康情報）</td><td>特別な管理措置の判断</td></tr>
+  <tr><td>8</td><td><strong>取得方法</strong></td><td>契約時に書面で取得</td><td>適正取得の確認</td></tr>
+  <tr><td>9</td><td><strong>保管場所</strong></td><td>CRMシステム（クラウド）</td><td>安全管理措置の確認</td></tr>
+  <tr><td>10</td><td><strong>保管期限</strong></td><td>契約終了後5年</td><td>不要データの廃棄確認</td></tr>
+  <tr><td>11</td><td><strong>アクセス権者</strong></td><td>営業部全員（20名）</td><td>最小権限の確認</td></tr>
+  <tr><td>12</td><td><strong>第三者提供の有無</strong></td><td>なし / あり（配送業者へ住所）</td><td>同意の必要性判断</td></tr>
+  <tr><td>13</td><td><strong>委託の有無</strong></td><td>あり（データ入力をA社に委託）</td><td>委託先管理の必要性</td></tr>
+  <tr><td>14</td><td><strong>安全管理措置</strong></td><td>暗号化、アクセスログ、施錠</td><td>対策の網羅性確認</td></tr>
+</table>
+
+<h3>7.3 台帳の作り方（実務フロー）</h3>
+<ol>
+  <li><strong>全部門にヒアリングシートを配布</strong>
+    <ul>
+      <li>「あなたの部門で扱っている個人情報をすべて書き出してください」</li>
+      <li>業務単位で考えさせる（「日常業務で人の名前を見る場面は？」）</li>
+    </ul>
+  </li>
+  <li><strong>ヒアリング（対面 or オンライン）</strong>
+    <ul>
+      <li>シートの回答をもとに深掘り質問</li>
+      <li>漏れやすいもの: メール添付ファイル、Excel管理表、紙の名刺、退職者データ</li>
+    </ul>
+  </li>
+  <li><strong>台帳への記入・整理</strong>
+    <ul>
+      <li>業務プロセス単位でまとめる</li>
+      <li>重複を整理</li>
+    </ul>
+  </li>
+  <li><strong>管理者の確認・承認</strong>
+    <ul>
+      <li>抜け漏れがないかダブルチェック</li>
+    </ul>
+  </li>
+  <li><strong>年1回以上の見直し</strong>
+    <ul>
+      <li>新規業務・システム変更時にも更新</li>
+    </ul>
+  </li>
+</ol>
+
+<div class="box-green">
+  <strong>AIPmark5での対応:</strong> この面倒な台帳作成プロセスをAIが支援します。<br>
+  ・企業プロファイルからAIが業務プロセスを推定<br>
+  ・ヒアリング仮説をAIが自動生成（「この業務なら○○の個人情報がありそう」）<br>
+  ・回答をもとにAIが台帳候補を生成（確定度: CONFIRMED/INFERRED/UNCONFIRMED）<br>
+  ・人間が確認・修正して確定
+</div>
+
+<h3>7.4 よくある失敗</h3>
+<table>
+  <tr><th>失敗パターン</th><th>なぜダメか</th><th>対策</th></tr>
+  <tr><td>紙のデータを忘れる</td><td>申込書の控え、FAX受信など紙媒体も個人情報</td><td>「紙で人の名前を見る業務は？」と質問</td></tr>
+  <tr><td>共有ドライブのExcelを見落とす</td><td>部門内で独自管理しているExcelが多い</td><td>ファイルサーバーの棚卸しも実施</td></tr>
+  <tr><td>退職者データを忘れる</td><td>退職後も保管義務がある（労基法で3年等）</td><td>「過去データの保管場所は？」と質問</td></tr>
+  <tr><td>名刺を個人情報と認識しない</td><td>名刺は代表的な個人情報</td><td>名刺管理アプリの利用も含めて確認</td></tr>
+  <tr><td>委託先に渡している情報を忘れる</td><td>給与計算委託、クラウドサービス等</td><td>「外部に出している情報は？」と質問</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 第8章 ===== -->
+<h2>第8章　リスク分析のやり方</h2>
+
+<h3>8.1 リスクとは</h3>
+<div class="box">
+  リスク分析とは、「台帳に載っている個人情報が<strong>漏えい・紛失・改ざん</strong>される可能性を評価し、対策を決めること」です。
+</div>
+
+<h3>8.2 ライフサイクルに沿ったリスク分析</h3>
+<p>個人情報の「一生」を6段階に分け、各段階でリスクを考えます。</p>
+
+<table>
+  <tr><th>段階</th><th>リスクの例</th><th>対策の例</th></tr>
+  <tr>
+    <td><strong>① 取得</strong></td>
+    <td>・目的外の情報を取得してしまう<br>・同意を得ずに取得してしまう</td>
+    <td>・取得項目の限定<br>・同意書テンプレートの整備</td>
+  </tr>
+  <tr>
+    <td><strong>② 利用</strong></td>
+    <td>・目的外利用<br>・権限のない人がアクセス</td>
+    <td>・アクセス権限の設定<br>・利用目的の社内周知</td>
+  </tr>
+  <tr>
+    <td><strong>③ 保管</strong></td>
+    <td>・サーバーへの不正アクセス<br>・PCの盗難<br>・紙書類の放置</td>
+    <td>・暗号化<br>・施錠管理<br>・クリアデスク</td>
+  </tr>
+  <tr>
+    <td><strong>④ 提供</strong></td>
+    <td>・メール誤送信<br>・FAX誤送信<br>・無断で第三者に提供</td>
+    <td>・送信前のダブルチェック<br>・第三者提供の同意取得</td>
+  </tr>
+  <tr>
+    <td><strong>⑤ 委託</strong></td>
+    <td>・委託先からの漏えい<br>・再委託の管理不備</td>
+    <td>・委託先の選定基準<br>・契約書で安全管理義務を規定</td>
+  </tr>
+  <tr>
+    <td><strong>⑥ 廃棄</strong></td>
+    <td>・データが完全に消去されない<br>・紙をそのままゴミ箱へ</td>
+    <td>・データ消去証明の取得<br>・シュレッダーの使用</td>
+  </tr>
+</table>
+
+<h3>8.3 リスク評価の方法</h3>
+<p>リスクは「<strong>影響度 × 発生可能性</strong>」で数値化します。</p>
+
+<table>
+  <tr><th colspan="2">影響度（万が一起きたらどれくらい大変？）</th></tr>
+  <tr><td><strong>3（大）</strong></td><td>要配慮・特定個人情報の漏えい、1,000件超の漏えい、社会的影響大</td></tr>
+  <tr><td><strong>2（中）</strong></td><td>一般個人情報の漏えい、100〜999件、業務影響あり</td></tr>
+  <tr><td><strong>1（小）</strong></td><td>軽微な漏えい、100件未満、限定的影響</td></tr>
+</table>
+
+<table>
+  <tr><th colspan="2">発生可能性（どれくらい起きやすい？）</th></tr>
+  <tr><td><strong>3（高）</strong></td><td>対策がない、過去に発生実績あり</td></tr>
+  <tr><td><strong>2（中）</strong></td><td>一部対策はあるが不十分</td></tr>
+  <tr><td><strong>1（低）</strong></td><td>十分な対策が実施済み</td></tr>
+</table>
+
+<table>
+  <tr><th>リスク値 = 影響度 × 発生可能性</th><th>判定</th><th>対応</th></tr>
+  <tr><td style="background:#fee2e2"><strong>6〜9</strong></td><td>高リスク</td><td>即座に追加対策が必要</td></tr>
+  <tr><td style="background:#fef3c7"><strong>3〜4</strong></td><td>中リスク</td><td>計画的に対策を実施</td></tr>
+  <tr><td style="background:#dcfce7"><strong>1〜2</strong></td><td>低リスク</td><td>現状維持（受容可能）</td></tr>
+</table>
+
+<h3>8.4 安全管理措置の4分類</h3>
+<table>
+  <tr><th>分類</th><th>内容</th><th>具体例</th></tr>
+  <tr><td><strong>組織的安全管理措置</strong></td><td>体制・ルール</td><td>管理者の設置、規程の整備、アクセスログの点検</td></tr>
+  <tr><td><strong>人的安全管理措置</strong></td><td>人に対する対策</td><td>教育、秘密保持誓約書、退職時のアクセス権削除</td></tr>
+  <tr><td><strong>物理的安全管理措置</strong></td><td>場所・モノの対策</td><td>入退室管理、施錠、PCワイヤーロック、シュレッダー</td></tr>
+  <tr><td><strong>技術的安全管理措置</strong></td><td>IT・システムの対策</td><td>アクセス制御、暗号化、ウイルス対策、ログ管理</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 第9章 ===== -->
+<h2>第9章　年次運用（取得後にやること）</h2>
+
+<div class="box-warn">
+  <strong>重要:</strong> Pマークは取得して終わりではありません。<strong>2年ごとの更新審査</strong>があり、毎年PDCAを回した記録が必要です。「取得だけして放置」は審査不合格の最大原因です。
+</div>
+
+<h3>9.1 教育（年1回以上）</h3>
+<table>
+  <tr><th>項目</th><th>内容</th></tr>
+  <tr><td>対象</td><td><strong>全従業員</strong>（正社員、契約社員、パート、派遣社員、役員すべて）</td></tr>
+  <tr><td>頻度</td><td>少なくとも年1回。中途入社者には入社時にも実施</td></tr>
+  <tr><td>内容</td><td>①個人情報保護法の基礎 ②自社の規程・ルール ③事故事例 ④罰則 ⑤各自の役割</td></tr>
+  <tr><td>記録</td><td>出席簿（全員の署名）、テスト結果、教材</td></tr>
+  <tr><td>理解度確認</td><td>テストやアンケートで理解度を確認（推奨: 80%以上の合格ライン）</td></tr>
+</table>
+
+<div class="example">
+  <strong>教育の実施方法例:</strong><br>
+  ・集合研修（会議室 or オンライン会議）— 最も一般的<br>
+  ・eラーニング — 大人数の会社向け<br>
+  ・テスト配布型 — 資料を読んでテストに回答（小規模向け）<br>
+  いずれの場合も「全員が受講した記録」が必須。未受講者がいると審査で指摘される。
+</div>
+
+<h3>9.2 内部監査（年1回以上）</h3>
+
+<h4>監査の流れ</h4>
+<ol>
+  <li><strong>監査計画の策定</strong> — 対象部門、スケジュール、監査員の決定</li>
+  <li><strong>チェックリストの作成</strong> — JIS Q 15001の要求事項に基づく確認項目</li>
+  <li><strong>監査の実施</strong> — インタビュー、記録の確認、現場の確認</li>
+  <li><strong>不適合の記録</strong> — 発見した問題を「不適合報告書」として記録</li>
+  <li><strong>是正要求</strong> — 問題の原因を分析し、是正措置を要求</li>
+  <li><strong>是正結果の確認</strong> — 是正が完了したことを確認</li>
+</ol>
+
+<h4>監査のポイント</h4>
+<ul>
+  <li><strong>監査員は自部門を監査できない</strong>（独立性の確保）</li>
+  <li>小さい会社では、管理者以外の人に監査員研修を受けさせる</li>
+  <li>チェックリストは形式的にならないよう、<strong>現場の実態</strong>を確認する</li>
+</ul>
+
+<div class="example">
+  <strong>内部監査でよく確認される項目:</strong><br>
+  ・台帳は最新か？ ・退職者のアクセス権は削除されたか？<br>
+  ・書類のキャビネットは施錠されているか？ ・クリアデスクは守られているか？<br>
+  ・委託先との契約書はあるか？ ・教育は全員受講したか？<br>
+  ・事故報告のフローは周知されているか？
+</div>
+
+<h3>9.3 マネジメントレビュー（年1回以上）</h3>
+<div class="box">
+  <strong>代表者（社長）が出席</strong>し、PMSの運用状況を確認して改善指示を出す会議です。「形式的にやりました」ではダメで、<strong>具体的な改善指示の記録</strong>が必要です。
+</div>
+
+<h4>インプット（報告事項）</h4>
+<ul>
+  <li>内部監査の結果</li>
+  <li>教育の実施状況</li>
+  <li>個人情報に関する事故・苦情の報告</li>
+  <li>法令改正の動向</li>
+  <li>前回マネジメントレビューの改善指示の進捗</li>
+  <li>リスク分析の結果</li>
+</ul>
+
+<h4>アウトプット（決定事項）</h4>
+<ul>
+  <li>PMSの改善指示</li>
+  <li>来期の重点施策</li>
+  <li>必要なリソース（予算・人員）の確保指示</li>
+  <li>個人情報保護方針の見直し要否</li>
+</ul>
+
+<h3>9.4 事故対応</h3>
+<h4>漏えい等が発生した場合のフロー</h4>
+<ol>
+  <li><strong>発見・報告</strong> — 発見者が管理者に即座に報告</li>
+  <li><strong>初動対応</strong> — 被害の拡大防止（アクセス遮断、回収等）</li>
+  <li><strong>事実確認</strong> — 漏えいした情報の特定、件数、原因の調査</li>
+  <li><strong>個人情報保護委員会への報告</strong>
+    <ul>
+      <li><strong>速報:</strong> 3〜5日以内</li>
+      <li><strong>確報:</strong> 30日以内（不正アクセス等は60日以内）</li>
+    </ul>
+  </li>
+  <li><strong>本人への通知</strong> — 漏えいした個人への連絡</li>
+  <li><strong>再発防止策の策定・実施</strong></li>
+  <li><strong>JIPDECへの報告</strong>（Pマーク事業者の義務）</li>
+</ol>
+
+<div class="box-red">
+  <strong>注意:</strong> 重大な漏えい事故を起こすとPマークが<strong>取消し</strong>になることがあります。2022年の制度改定で報告が義務化されたため、「隠す」ことは絶対にNG。迅速な報告と適切な対応が、むしろ信頼につながります。
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 第10章 ===== -->
+<h2>第10章　審査の実際</h2>
+
+<h3>10.1 審査の流れ</h3>
+<table>
+  <tr><th>段階</th><th>期間</th><th>内容</th></tr>
+  <tr><td><strong>1. 申請</strong></td><td>—</td><td>申請書類一式をJIPDEC（or 審査機関）に提出</td></tr>
+  <tr><td><strong>2. 形式審査</strong></td><td>1〜2週間</td><td>書類の不備チェック</td></tr>
+  <tr><td><strong>3. 文書審査</strong></td><td>1〜2ヶ月</td><td>規程・台帳・記録を審査員が精査。指摘があれば回答を求められる</td></tr>
+  <tr><td><strong>4. 現地審査</strong></td><td>1日</td><td>審査員（通常2名）が訪問。インタビュー + 現場確認</td></tr>
+  <tr><td><strong>5. 指摘事項への対応</strong></td><td>1〜2ヶ月</td><td>指摘への回答書・改善報告書を提出</td></tr>
+  <tr><td><strong>6. 判定</strong></td><td>1〜2ヶ月</td><td>付与適格と判定されればPマーク付与</td></tr>
+</table>
+
+<h3>10.2 よく指摘される点 TOP10</h3>
+<table>
+  <tr><th>#</th><th>指摘事項</th><th>対策</th></tr>
+  <tr><td>1</td><td>台帳が<strong>最新でない</strong>（新システム導入後に更新していない）</td><td>定期見直しの仕組み化</td></tr>
+  <tr><td>2</td><td>教育で<strong>未受講者</strong>がいる</td><td>未受講者フォローの仕組み</td></tr>
+  <tr><td>3</td><td>委託先との<strong>契約書に個人情報保護条項がない</strong></td><td>契約書テンプレートの見直し</td></tr>
+  <tr><td>4</td><td>退職者のアクセス権が<strong>削除されていない</strong></td><td>退職時チェックリスト</td></tr>
+  <tr><td>5</td><td>リスク分析が<strong>形式的</strong>（全項目同じ評価値）</td><td>実態に即した個別評価</td></tr>
+  <tr><td>6</td><td>規程と<strong>実態が乖離</strong>している</td><td>実態に合わせて規程を修正</td></tr>
+  <tr><td>7</td><td>事故対応フローが<strong>周知されていない</strong></td><td>教育で事故報告の手順を説明</td></tr>
+  <tr><td>8</td><td>マネジメントレビュー議事録に<strong>具体的な改善指示がない</strong></td><td>「○○を改善する」と具体的に記録</td></tr>
+  <tr><td>9</td><td>個人情報保護方針が<strong>Webサイトに掲載されていない</strong></td><td>フッターにリンクを設置</td></tr>
+  <tr><td>10</td><td>同意書の<strong>利用目的が曖昧</strong></td><td>具体的な目的を列挙</td></tr>
+</table>
+
+<h3>10.3 合格のコツ</h3>
+<div class="box-green">
+  <ol>
+    <li><strong>「実態ベース」で整備する</strong> — テンプレをそのまま使わず、自社の実態に合わせる</li>
+    <li><strong>完璧を目指さない</strong> — 指摘は必ず出る。重要なのは「是正できる体制があること」</li>
+    <li><strong>記録を残す</strong> — 「やりました」は証拠がなければ「やっていない」と同じ</li>
+    <li><strong>審査員の質問に正直に答える</strong> — 知ったかぶりより「確認します」の方が好印象</li>
+    <li><strong>PDCAが回っている証拠を見せる</strong> — 「前回の監査で○○を指摘 → 改善済み」の流れ</li>
+  </ol>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 第11章 ===== -->
+<h2>第11章　実務でよくあるQ&A 30選</h2>
+
+<div class="qa">
+  <div class="qa-q">Q1. 従業員5人の小さな会社でもPマークは取れますか？</div>
+  <div class="qa-a">取れます。従業員2名で取得した事例もあります。ただし、管理者と監査責任者は別の人にする必要があるため、最低2名以上の「個人情報保護に関わる人」が必要です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q2. 個人事業主でも取れますか？</div>
+  <div class="qa-a">取れません。Pマークは「法人」が対象です。個人事業主は対象外です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q3. コンサルなしで自力取得は可能ですか？</div>
+  <div class="qa-a">可能ですが、初回は規格の解釈で苦労します。少なくとも1回は専門家のアドバイスを受けることを推奨します。AIPmark5のようなツールを使えばハードルは大きく下がります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q4. 取得までどれくらいかかりますか？</div>
+  <div class="qa-a">コンサル利用で5〜9ヶ月、自力で8〜15ヶ月が目安です。準備期間（規程整備・運用実績）で3〜12ヶ月、審査で2〜3ヶ月かかります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q5. アルバイトやパートも教育対象ですか？</div>
+  <div class="qa-a">はい。個人情報に触れる可能性がある<strong>すべての従業者</strong>が対象です。派遣社員も含みます。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q6. クラウドサービス（AWS, Google Workspace等）は委託先になりますか？</div>
+  <div class="qa-a">個人情報の処理を委託している場合は委託先に該当します。ただし、SaaSの利用規約で安全管理措置が明記されていれば、個別の委託契約は不要な場合もあります。台帳には記載しておくべきです。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q7. 名刺は個人情報ですか？</div>
+  <div class="qa-a">はい。名刺に記載された氏名・会社名・電話番号等は個人情報です。名刺管理アプリを使っている場合、そのアプリも管理対象です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q8. 社内の防犯カメラの映像は個人情報ですか？</div>
+  <div class="qa-a">人物が識別できる映像は個人情報です。台帳に記載し、利用目的（防犯）の掲示、保管期間の設定、アクセス権者の限定が必要です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q9. Excelで台帳を管理するのは問題ありますか？</div>
+  <div class="qa-a">Pマーク的にはExcelでもOKです。ただし、版管理が難しい、更新漏れが起きやすい、複数人で編集しにくいという課題があり、専用ツール（AIPmark5等）の方が運用しやすいです。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q10. 取得後にPマークを使わなくなった場合、返上できますか？</div>
+  <div class="qa-a">更新申請をしなければ自動的に失効します。ただし、一度取得すると取引先から「なぜやめたのか」と聞かれるリスクがあります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q11. 個人情報を海外に移転する場合、特別な対応は必要ですか？</div>
+  <div class="qa-a">はい。外国にある第三者への提供には、本人の同意に加え、移転先の国の個人情報保護制度の調査が必要です（2022年改正で追加）。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q12. ChatGPT等のAIツールに個人情報を入力してよいですか？</div>
+  <div class="qa-a">原則として避けるべきです。個人情報をAIサービスに送信する場合は、利用規約の確認、本人同意の取得、PIIマスキングの実施が必要です。AIPmark5ではPIIマスキング機能（メール→[EMAIL]等）を実装しています。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q13. 審査に落ちることはありますか？</div>
+  <div class="qa-a">「不合格」という概念はなく、指摘事項に対して是正を求められます。是正が認められれば合格です。ただし、是正が不十分だと何度も差し戻される場合があります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q14. ISMSとPマーク、両方取る必要はありますか？</div>
+  <div class="qa-a">取引先の要求によります。個人情報だけならPマーク、情報セキュリティ全般ならISMS。両方求められる業種（IT受託開発等）もあります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q15. テレワーク（在宅勤務）はPマークに影響しますか？</div>
+  <div class="qa-a">大きく影響します。自宅での個人情報の取り扱いルール（画面ロック、家族に見せない、紙の持ち出し禁止等）を規程に追加し、教育でも周知する必要があります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q16. マイナンバーの管理で特に気をつけることは？</div>
+  <div class="qa-a">通常の個人情報よりも厳格です。①利用目的が法定範囲に限定 ②専用の保管場所（システム上も物理的にも分離推奨）③退職後は速やかに廃棄 ④アクセスログ必須。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q17. 個人情報保護方針と個人情報保護規程の違いは？</div>
+  <div class="qa-a">方針は「会社の姿勢を社外に公表するもの」（Webサイト掲載）。規程は「社内のルールをまとめたもの」（社内文書）。方針は抽象的、規程は具体的です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q18. 漏えいしたら必ずPマーク取消になりますか？</div>
+  <div class="qa-a">いいえ。取消になるのは「故意・重過失」「大量漏えい」「報告義務違反」等の重大なケースです。適切に報告し、是正措置を講じていれば、注意や勧告で済むことが多いです。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q19. 監査員に資格は必要ですか？</div>
+  <div class="qa-a">法的な資格要件はありませんが、内部監査を行う力量が必要です。JIPDECや研修機関が提供する「内部監査員研修」の受講が推奨されます（1日、1〜3万円程度）。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q20. 個人情報保護責任者と管理者の違いは？</div>
+  <div class="qa-a">多くの場合同じ人です。JIS Q 15001では「個人情報保護管理者」を任命することが求められています。「責任者」は一般的な呼び方です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q21. 更新審査は新規より厳しいですか？</div>
+  <div class="qa-a">観点が異なります。新規は「体制ができているか」、更新は「2年間ちゃんと運用したか」を見ます。運用記録が薄いと更新審査の方が厳しく感じます。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q22. Webサイトのクッキーも個人情報になりますか？</div>
+  <div class="qa-a">2022年改正で「個人関連情報」という概念が追加されました。クッキー単体は個人情報ではありませんが、個人情報と紐づけて利用する場合は本人同意が必要です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q23. 取得前に「運用実績」はどれくらい必要ですか？</div>
+  <div class="qa-a">明確な規定はありませんが、最低でもPDCAを1回回す（教育→監査→MR）必要があるため、<strong>2〜3ヶ月の運用実績</strong>は必要です。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q24. Pマークの有効期間中に会社名が変わったらどうなりますか？</div>
+  <div class="qa-a">JIPDECに「変更届」を提出すれば、Pマークはそのまま継続できます。合併の場合は審査が必要になることがあります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q25. 規程のテンプレートはどこで手に入りますか？</div>
+  <div class="qa-a">①JIPDECのWebサイト（一部公開）②コンサル会社から購入（5〜30万円）③書籍の付録 ④Pマーク取得支援ツール。テンプレは必ず自社の実態に合わせてカスタマイズしてください。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q26. 審査費用は毎回かかりますか？</div>
+  <div class="qa-a">はい。新規取得時と2年ごとの更新時に審査費用が発生します。更新費用は新規より安いですが、毎回20〜50万円程度かかります。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q27. リモートでの審査（オンライン審査）は可能ですか？</div>
+  <div class="qa-a">COVID-19以降、一部オンラインでの審査が認められています。ただし、物理的な管理状況の確認が必要な場合は現地審査が行われます。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q28. プライバシーポリシーに必ず記載すべき項目は？</div>
+  <div class="qa-a">①事業者名・住所・代表者名 ②利用目的 ③第三者提供の有無 ④委託の有無 ⑤開示等請求の手続き ⑥苦情相談窓口 ⑦認定個人情報保護団体の名称・苦情解決窓口。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q29. 子会社・グループ会社への個人情報の共有は「第三者提供」ですか？</div>
+  <div class="qa-a">はい。法人格が異なれば第三者です。ただし「共同利用」の要件を満たせば本人同意なしで共有可能です（利用目的・項目・管理責任者等の公表が必要）。</div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">Q30. AIPmark5はPマーク取得のどの部分を支援してくれますか？</div>
+  <div class="qa-a">主に「台帳作成」「リスク分析」「教育管理」「監査管理」「事故対応」「マネジメントレビュー」「申請書類の自動生成」を支援します。AIが業務プロセスの推定・ヒアリング仮説の生成・台帳候補の自動作成を行い、人間の作業量を大幅に削減します。</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== 第12章 ===== -->
+<h2>第12章　用語集</h2>
+
+<table class="glossary">
+  <tr><th>用語</th><th>説明</th></tr>
+  <tr><td>PMS</td><td>Personal Information Protection Management System。個人情報保護マネジメントシステムの略。Pマークの土台となる仕組み全体</td></tr>
+  <tr><td>JIS Q 15001</td><td>PMSの要求事項を定めた日本産業規格。Pマーク審査の基準</td></tr>
+  <tr><td>JIPDEC</td><td>一般財団法人 日本情報経済社会推進協会。Pマーク制度の運営機関</td></tr>
+  <tr><td>個人情報保護法</td><td>個人情報の取り扱いに関する日本の法律。2003年制定、2022年最新改正</td></tr>
+  <tr><td>個人情報</td><td>生存する個人を識別できる情報（氏名、住所、顔写真等）</td></tr>
+  <tr><td>要配慮個人情報</td><td>差別・偏見につながる恐れのある情報（病歴、犯罪歴、信条等）。取得に明示的同意が必要</td></tr>
+  <tr><td>特定個人情報</td><td>マイナンバーを含む個人情報。最も厳格な規制対象</td></tr>
+  <tr><td>個人識別符号</td><td>それ単体で個人を識別できる符号（マイナンバー、パスポート番号、顔認識データ等）</td></tr>
+  <tr><td>安全管理措置</td><td>個人情報の漏えい・紛失を防ぐための対策（組織的・人的・物理的・技術的の4分類）</td></tr>
+  <tr><td>PDCA</td><td>Plan-Do-Check-Act。継続的改善のサイクル。PMSの運用方法そのもの</td></tr>
+  <tr><td>個人情報保護管理者</td><td>PMSの実務責任者。台帳管理、教育計画、事故対応を統括</td></tr>
+  <tr><td>個人情報保護監査責任者</td><td>内部監査の計画・実施の責任者。管理者から独立していることが必要</td></tr>
+  <tr><td>台帳（個人情報管理台帳）</td><td>会社が保有する全個人情報の一覧表。Pマークで最も重要な文書</td></tr>
+  <tr><td>リスク分析</td><td>個人情報の漏えい等が起きる可能性と影響を評価し、対策を決めること</td></tr>
+  <tr><td>内部監査</td><td>PMSが適切に運用されているかを社内でチェックする活動（年1回以上）</td></tr>
+  <tr><td>マネジメントレビュー</td><td>代表者がPMSの運用状況を確認し、改善指示を出す会議（年1回以上）</td></tr>
+  <tr><td>是正処置</td><td>発見された問題の根本原因を特定し、再発を防止する措置</td></tr>
+  <tr><td>委託先管理</td><td>個人情報の処理を外部に委託する場合の管理（選定基準、契約、監督）</td></tr>
+  <tr><td>第三者提供</td><td>本人の同意を得て個人情報を外部に提供すること</td></tr>
+  <tr><td>開示請求</td><td>本人が事業者に対して「私の情報を見せてください」と要求すること</td></tr>
+  <tr><td>構築・運用指針</td><td>JIPDECが定めるPマーク審査の実質的な基準文書</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 付録A ===== -->
+<h2>付録A　必要書類チェックリスト</h2>
+<p>Pマーク取得・更新に必要な書類の一覧です。</p>
+
+<table class="checklist">
+  <tr><th>✓</th><th>書類名</th><th>タイミング</th><th>備考</th></tr>
+  <tr><td>□</td><td>個人情報保護方針</td><td>初期整備</td><td>Webサイトに公表</td></tr>
+  <tr><td>□</td><td>個人情報保護規程</td><td>初期整備</td><td>JIS Q 15001全要求をカバー</td></tr>
+  <tr><td>□</td><td>個人情報管理台帳</td><td>初期整備→随時更新</td><td>全部門の個人情報を網羅</td></tr>
+  <tr><td>□</td><td>リスク分析表</td><td>初期整備→年次見直し</td><td>台帳と連動</td></tr>
+  <tr><td>□</td><td>教育計画書</td><td>年次</td><td>対象者・内容・スケジュール</td></tr>
+  <tr><td>□</td><td>教育実施記録</td><td>教育実施後</td><td>出席簿、教材、テスト結果</td></tr>
+  <tr><td>□</td><td>内部監査計画書</td><td>年次</td><td>対象部門・監査員・スケジュール</td></tr>
+  <tr><td>□</td><td>内部監査報告書</td><td>監査実施後</td><td>発見事項・是正措置</td></tr>
+  <tr><td>□</td><td>是正処置報告書</td><td>不適合発見時</td><td>原因分析・再発防止策</td></tr>
+  <tr><td>□</td><td>マネジメントレビュー議事録</td><td>年次</td><td>代表者の改善指示を記録</td></tr>
+  <tr><td>□</td><td>委託先管理台帳</td><td>委託先がある場合</td><td>評価結果・契約状況</td></tr>
+  <tr><td>□</td><td>委託契約書（個人情報保護条項付き）</td><td>委託時</td><td>全委託先分</td></tr>
+  <tr><td>□</td><td>事故対応報告書</td><td>事故発生時</td><td>経緯・対応・再発防止</td></tr>
+  <tr><td>□</td><td>苦情対応記録</td><td>苦情受付時</td><td>内容・対応・結果</td></tr>
+  <tr><td>□</td><td>秘密保持誓約書</td><td>入社時</td><td>全従業者分</td></tr>
+  <tr><td>□</td><td>同意書・通知書テンプレート</td><td>初期整備</td><td>取得時の利用目的通知用</td></tr>
+  <tr><td>□</td><td>組織体制図</td><td>初期整備</td><td>管理者・監査責任者の位置づけ</td></tr>
+  <tr><td>□</td><td>法令管理台帳</td><td>初期整備→随時更新</td><td>関連法令の一覧</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ===== 付録B ===== -->
+<h2>付録B　AIPmark5との対応表</h2>
+<p>本書で説明したPマークの各プロセスが、AIPmark5のどのモジュールで管理されるかの対応表です。</p>
+
+<table>
+  <tr><th>Pマークのプロセス</th><th>AIPmark5モジュール</th><th>実装状態</th><th>主な機能</th></tr>
+  <tr><td>個人情報の特定・台帳作成</td><td>M-02 台帳管理</td><td><span class="tag tag-done">実装済</span></td><td>AI台帳候補生成、ヒアリング支援</td></tr>
+  <tr><td>リスク分析・対策</td><td>M-03 リスク管理</td><td><span class="tag tag-new">要件確定</span></td><td>AIリスク候補生成、ヒートマップ</td></tr>
+  <tr><td>規程・文書管理</td><td>M-04 文書管理</td><td><span class="tag tag-new">要件確定</span></td><td>版管理、文書体系表出力</td></tr>
+  <tr><td>教育</td><td>M-05 教育管理</td><td><span class="tag tag-new">要件確定</span></td><td>AIテスト生成、受講管理</td></tr>
+  <tr><td>委託先管理</td><td>M-06 委託先管理</td><td><span class="tag tag-new">要件確定</span></td><td>AI質問票生成、評価管理</td></tr>
+  <tr><td>内部監査</td><td>M-07 監査・是正</td><td><span class="tag tag-new">要件確定</span></td><td>AIチェックリスト生成、是正管理</td></tr>
+  <tr><td>事故対応</td><td>M-08 事故対応</td><td><span class="tag tag-new">要件確定</span></td><td>法定期限管理、報告書生成</td></tr>
+  <tr><td>マネジメントレビュー</td><td>M-11 MR管理</td><td><span class="tag tag-new">要件確定</span></td><td>AI議事録ドラフト、全モジュール集約</td></tr>
+  <tr><td>申請・更新</td><td>M-09 申請管理</td><td><span class="tag tag-new">要件確定</span></td><td>準備状況チェック、変更報告生成</td></tr>
+  <tr><td>AI支援全般</td><td>M-10 AI支援</td><td><span class="tag tag-done">実装済</span></td><td>Geminiチャット、PIIマスキング</td></tr>
+  <tr><td>全体進捗の可視化</td><td>ダッシュボード</td><td><span class="tag tag-done">実装済</span></td><td>統計カード、進捗バー</td></tr>
+</table>
+
+<div class="box-green" style="margin-top: 24px;">
+  <strong>AIPmark5の価値:</strong> 従来は上記のすべてをExcel・Word・紙で管理していたため、膨大な手間がかかっていました。AIPmark5は、AIによる自動推定・提案と、一元管理プラットフォームにより、<strong>Pマーク取得・運用の工数を大幅に削減</strong>することを目指しています。
+</div>
+
+<div class="footer">
+  <p>プライバシーマーク 完全理解ガイド — 2026年3月12日作成</p>
+  <p>※ 本書は2026年3月時点の情報に基づいています。法令・制度の最新情報はJIPDECおよび個人情報保護委員会のWebサイトでご確認ください。</p>
+</div>
+
+</body>
+</html>

@@ -2,38 +2,70 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { parseBody } from "@/lib/validations";
+import { createDataFieldSchema } from "@/lib/validations/company";
 
 function canManage(role: string) {
   return ["PRIVACY_OFFICER", "GLOBAL_ADMIN"].includes(role);
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const items = await prisma.dataFieldDefinition.findMany({
-    orderBy: [{ isSensitive: "desc" }, { code: "asc" }],
-  });
+    // DataFieldDefinition はテナント共通のマスタデータ（organizationId を持たない）
+    // 個人情報項目の定義であり、全組織で共有される
+    const items = await prisma.dataFieldDefinition.findMany({
+      orderBy: [{ isSensitive: "desc" }, { code: "asc" }],
+    });
 
-  return NextResponse.json(items);
+    return NextResponse.json(items);
+  } catch (error) {
+    console.error("GET /api/master/data-fields error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!canManage(session.user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!canManage(session.user.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json();
-  const item = await prisma.dataFieldDefinition.create({
-    data: {
-      code: body.code,
-      name: body.name,
-      description: body.description ?? null,
-      categoryHint: body.categoryHint ?? null,
-      isSensitive: Boolean(body.isSensitive),
-      isSpecificPerson: Boolean(body.isSpecificPerson),
-    },
-  });
+    const body = await req.json();
+    const parsed = parseBody(createDataFieldSchema, body);
+    if (!parsed.success) return parsed.error;
+    const { code, name, description, categoryHint, isSensitive, isSpecificPerson } = parsed.data;
 
-  return NextResponse.json(item, { status: 201 });
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.dataFieldDefinition.create({
+        data: {
+          code,
+          name,
+          description: description ?? null,
+          categoryHint: categoryHint ?? null,
+          isSensitive: isSensitive ?? false,
+          isSpecificPerson: isSpecificPerson ?? false,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: "CREATE",
+          entityType: "DataFieldDefinition",
+          entityId: created.code,
+          details: JSON.stringify({ code, name }),
+        },
+      });
+
+      return created;
+    });
+
+    return NextResponse.json(item, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/master/data-fields error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }

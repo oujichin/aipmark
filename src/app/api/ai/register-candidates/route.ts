@@ -5,13 +5,18 @@ import { getGeminiClient, MODEL } from "@/lib/ai/gemini-client";
 import { maskPII } from "@/lib/ai/pii-masker";
 import { buildRegisterCandidatesPrompt } from "@/lib/ai/prompts/register-candidates";
 import { prisma } from "@/lib/prisma";
+import { parseBody } from "@/lib/validations";
+import { registerCandidatesSchema } from "@/lib/validations/ai";
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { processName, processDescription, hearingAnswers, hypotheses } = body;
+  const parsed = parseBody(registerCandidatesSchema, body);
+  if (!parsed.success) return parsed.error;
+  const { processName, processDescription, hearingAnswers, hypotheses } = parsed.data;
   const [dataCategories, dataFields] = await Promise.all([
     prisma.dataCategory.findMany({ orderBy: { code: "asc" } }),
     prisma.dataFieldDefinition.findMany({ orderBy: { code: "asc" } }),
@@ -53,5 +58,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "不明なエラー";
     return NextResponse.json({ error: msg }, { status: 500 });
+  }
+  } catch (error) {
+    console.error("POST /api/ai/register-candidates error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
