@@ -13,7 +13,6 @@ const navItems = [
     label: "会社プロファイル",
     href: "/company",
     icon: "🏛",
-    badge: "実装済",
     children: [
       { label: "基本情報・AI調査", href: "/company/profile" },
     ],
@@ -22,7 +21,6 @@ const navItems = [
     label: "個人データ台帳",
     href: "/register",
     icon: "📋",
-    badge: "実装済",
     children: [
       { label: "業務プロセス", href: "/register/processes" },
       { label: "ヒアリング", href: "/register/hearing" },
@@ -35,55 +33,46 @@ const navItems = [
     label: "リスク管理",
     href: "/risk",
     icon: "⚠",
-    badge: "予定",
   },
   {
     label: "文書・エビデンス",
     href: "/documents",
     icon: "📁",
-    badge: "予定",
   },
   {
     label: "教育管理",
     href: "/training",
     icon: "🎓",
-    badge: "予定",
   },
   {
     label: "ベンダー管理",
     href: "/vendors",
     icon: "🏢",
-    badge: "予定",
   },
   {
     label: "内部監査・是正",
     href: "/audit",
     icon: "🔍",
-    badge: "予定",
   },
   {
     label: "インシデント対応",
     href: "/incidents",
     icon: "🚨",
-    badge: "予定",
   },
   {
     label: "マネジメントレビュー",
     href: "/reviews",
     icon: "📊",
-    badge: "実装済",
   },
   {
     label: "申請・更新",
     href: "/application",
     icon: "📝",
-    badge: "予定",
   },
   {
     label: "AI支援",
     href: "/ai-support",
     icon: "✨",
-    badge: "実装済",
   },
   {
     label: "管理者設定",
@@ -130,17 +119,6 @@ export function Sidebar() {
               >
                 <span className="text-base w-5 text-center">{item.icon}</span>
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span
-                    className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                      item.badge === "実装済"
-                        ? "bg-blue-100 text-blue-600"
-                        : "bg-slate-100 text-slate-400"
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
               </Link>
 
               {/* Sub-items */}

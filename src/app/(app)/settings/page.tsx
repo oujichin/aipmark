@@ -47,12 +47,12 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
 
   async function loadMasters() {
-    const [categoryRows, fieldRows] = await Promise.all([
+    const [categoryRaw, fieldRaw] = await Promise.all([
       fetch("/api/master/data-categories").then((r) => r.json()),
       fetch("/api/master/data-fields").then((r) => r.json()),
     ]);
-    setCategories(categoryRows);
-    setFields(fieldRows);
+    setCategories(Array.isArray(categoryRaw) ? categoryRaw : categoryRaw.items ?? []);
+    setFields(Array.isArray(fieldRaw) ? fieldRaw : fieldRaw.items ?? []);
   }
 
   useEffect(() => {

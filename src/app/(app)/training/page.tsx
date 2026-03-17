@@ -110,7 +110,7 @@ export default function TrainingPage() {
     const res = await fetch(`/api/training/plans?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
-      setPlans(data);
+      setPlans(Array.isArray(data) ? data : data.items ?? []);
     }
     setLoading(false);
   }, [filterYear, filterStatus]);

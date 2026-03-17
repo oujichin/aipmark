@@ -28,8 +28,8 @@ export default function ProcessesPage() {
       fetch("/api/register/processes").then((r) => r.json()),
       fetch("/api/register/departments").then((r) => r.json()),
     ]).then(([procs, depts]) => {
-      setProcesses(procs);
-      setDepartments(depts);
+      setProcesses(Array.isArray(procs) ? procs : procs.items ?? []);
+      setDepartments(Array.isArray(depts) ? depts : depts.items ?? []);
       setLoading(false);
     });
   }, []);

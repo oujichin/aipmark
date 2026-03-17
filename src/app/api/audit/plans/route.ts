@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
           leadAuditor: { select: { id: true, name: true } },
           targetDepts: { include: { department: { select: { id: true, name: true } } } },
           auditors: { include: { user: { select: { id: true, name: true } } } },
+          findings: {
+            select: { id: true, title: true, severity: true, status: true, createdAt: true },
+          },
           _count: { select: { findings: true, checklistItems: true } },
         },
         orderBy: { createdAt: "desc" },

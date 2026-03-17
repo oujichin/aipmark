@@ -70,7 +70,11 @@ function HearingContent() {
       fetch("/api/master/data-categories").then((r) => r.json()),
       fetch("/api/master/data-fields").then((r) => r.json()),
     ])
-      .then(([procs, hearingRows, categoryRows, fieldRows]: [Process[], HearingRecord[], MasterRecord[], DataFieldMasterRecord[]]) => {
+      .then(([procsRaw, hearingRaw, categoryRaw, fieldRaw]: [Process[] | { items: Process[] }, HearingRecord[] | { items: HearingRecord[] }, MasterRecord[] | { items: MasterRecord[] }, DataFieldMasterRecord[] | { items: DataFieldMasterRecord[] }]) => {
+        const procs = Array.isArray(procsRaw) ? procsRaw : procsRaw.items ?? [];
+        const hearingRows = Array.isArray(hearingRaw) ? hearingRaw : hearingRaw.items ?? [];
+        const categoryRows = Array.isArray(categoryRaw) ? categoryRaw : categoryRaw.items ?? [];
+        const fieldRows = Array.isArray(fieldRaw) ? fieldRaw : fieldRaw.items ?? [];
         const p = procs.find((x) => x.id === processId);
         if (p) setProcess(p);
         setCategories(categoryRows);

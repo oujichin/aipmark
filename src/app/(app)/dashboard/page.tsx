@@ -109,33 +109,28 @@ export default async function DashboardPage() {
   const currentYear = new Date().getFullYear();
   const now = new Date();
 
+  // groupByで同テーブルの複数countを集約し、クエリ数を削減
   const [
-    totalItems,
-    pendingApproval,
-    approved,
-    rejected,
+    registerStatusGroups,
     recentLogs,
     processes,
     // リスク管理
     riskAssessmentCount,
-    riskItemIdentified,
+    riskItemStatusGroups,
     riskItemHigh,
-    // 文書管理
-    documentCount,
-    documentActive,
+    // 文書管理 (groupBy)
+    docStatusGroups,
     // 教育管理
     trainingPlanCount,
-    trainingResultTotal,
-    trainingResultCompleted,
+    trainingResultStatusGroups,
     // 委託先管理
     vendorCount,
     vendorNeedsEval,
     // 監査管理
     auditPlanCount,
     correctiveUnclosed,
-    // 事故対応
-    incidentCount,
-    incidentOpen,
+    // 事故対応 (groupBy)
+    incidentStatusGroups,
     incidentOverdue,
     // 申請管理
     applicationPackageCount,
@@ -144,10 +139,12 @@ export default async function DashboardPage() {
     reviewCount,
     reviewUnapproved,
   ] = await Promise.all([
-    prisma.registerItem.count({ where: { businessProcess: { organizationId: orgId } } }),
-    prisma.registerItem.count({ where: { businessProcess: { organizationId: orgId }, status: "PENDING_APPROVAL" } }),
-    prisma.registerItem.count({ where: { businessProcess: { organizationId: orgId }, status: { in: ["APPROVED", "LOCKED"] } } }),
-    prisma.registerItem.count({ where: { businessProcess: { organizationId: orgId }, status: "REJECTED" } }),
+    // 台帳: 4つのcountを1つのgroupByに集約
+    prisma.registerItem.groupBy({
+      by: ["status"],
+      where: { businessProcess: { organizationId: orgId } },
+      _count: true,
+    }),
     prisma.auditLog.findMany({
       take: 10,
       orderBy: { createdAt: "desc" },
@@ -160,27 +157,30 @@ export default async function DashboardPage() {
 
     // リスク管理
     prisma.riskAssessment.count({ where: { organizationId: orgId } }),
-    prisma.riskItem.count({
-      where: { riskAssessment: { organizationId: orgId }, status: "IDENTIFIED" },
+    // RiskItem: statusでgroupBy (IDENTIFIED count)
+    prisma.riskItem.groupBy({
+      by: ["status"],
+      where: { riskAssessment: { organizationId: orgId } },
+      _count: true,
     }),
     prisma.riskItem.count({
       where: { riskAssessment: { organizationId: orgId }, riskValue: { gte: 6 } },
     }),
 
-    // 文書管理
-    prisma.pMSDocument.count({ where: { organizationId: orgId } }),
-    prisma.pMSDocument.count({ where: { organizationId: orgId, status: "ACTIVE" } }),
+    // 文書管理: 2つのcountを1つのgroupByに集約
+    prisma.pMSDocument.groupBy({
+      by: ["status"],
+      where: { organizationId: orgId },
+      _count: true,
+    }),
 
     // 教育管理
     prisma.trainingPlan.count({ where: { organizationId: orgId, fiscalYear: currentYear } }),
-    prisma.trainingResult.count({
+    // TrainingResult: 2つのcountを1つのgroupByに集約
+    prisma.trainingResult.groupBy({
+      by: ["status"],
       where: { trainingSession: { trainingPlan: { organizationId: orgId, fiscalYear: currentYear } } },
-    }),
-    prisma.trainingResult.count({
-      where: {
-        trainingSession: { trainingPlan: { organizationId: orgId, fiscalYear: currentYear } },
-        status: "COMPLETED",
-      },
+      _count: true,
     }),
 
     // 委託先管理
@@ -208,10 +208,11 @@ export default async function DashboardPage() {
       },
     }),
 
-    // 事故対応
-    prisma.incidentCase.count({ where: { organizationId: orgId } }),
-    prisma.incidentCase.count({
-      where: { organizationId: orgId, status: { notIn: ["CLOSED"] } },
+    // 事故対応: 2つのcountを1つのgroupByに集約
+    prisma.incidentCase.groupBy({
+      by: ["status"],
+      where: { organizationId: orgId },
+      _count: true,
     }),
     prisma.incidentCase.count({
       where: {
@@ -238,6 +239,38 @@ export default async function DashboardPage() {
       where: { organizationId: orgId, status: { notIn: ["APPROVED", "LOCKED"] } },
     }),
   ]);
+
+  // groupBy結果から各statusのcountを抽出するヘルパー
+  const countByStatus = <T extends { status: string; _count: number }>(
+    groups: T[],
+    statuses: string[]
+  ): number => groups
+    .filter((g) => statuses.includes(g.status))
+    .reduce((sum, g) => sum + g._count, 0);
+
+  const sumAllGroups = <T extends { _count: number }>(groups: T[]): number =>
+    groups.reduce((sum, g) => sum + g._count, 0);
+
+  // 台帳統計
+  const totalItems = sumAllGroups(registerStatusGroups);
+  const pendingApproval = countByStatus(registerStatusGroups, ["PENDING_APPROVAL"]);
+  const approved = countByStatus(registerStatusGroups, ["APPROVED", "LOCKED"]);
+  const rejected = countByStatus(registerStatusGroups, ["REJECTED"]);
+
+  // リスク管理
+  const riskItemIdentified = countByStatus(riskItemStatusGroups, ["IDENTIFIED"]);
+
+  // 文書管理
+  const documentCount = sumAllGroups(docStatusGroups);
+  const documentActive = countByStatus(docStatusGroups, ["ACTIVE"]);
+
+  // 教育管理
+  const trainingResultTotal = sumAllGroups(trainingResultStatusGroups);
+  const trainingResultCompleted = countByStatus(trainingResultStatusGroups, ["COMPLETED"]);
+
+  // 事故対応
+  const incidentCount = sumAllGroups(incidentStatusGroups);
+  const incidentOpen = incidentCount - countByStatus(incidentStatusGroups, ["CLOSED"]);
 
   const processProgress = processes.map((p) => {
     const total = p.registerItems.length;

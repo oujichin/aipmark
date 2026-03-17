@@ -291,7 +291,7 @@ export default function RiskPage() {
       const res = await fetch("/api/risk/assessments");
       if (res.ok) {
         const data = await res.json();
-        setAssessments(data);
+        setAssessments(Array.isArray(data) ? data : data.items ?? []);
       }
     } catch {
       // silently fail

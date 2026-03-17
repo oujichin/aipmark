@@ -129,7 +129,8 @@ export default function ApplicationPage() {
       setLoading(true);
       const res = await fetch("/api/application");
       if (!res.ok) throw new Error("取得に失敗しました");
-      const data: ApplicationPackage[] = await res.json();
+      const raw = await res.json();
+      const data: ApplicationPackage[] = Array.isArray(raw) ? raw : raw.items ?? [];
       setPackages(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");

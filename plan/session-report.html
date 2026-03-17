@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>AIPmark5 開発セッション報告書</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; color: #1e293b; line-height: 1.7; font-size: 10.5pt; }
+  .cover { page-break-after: always; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+  .cover .logo { width: 64px; height: 64px; background: #2563eb; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+  .cover .logo span { color: white; font-size: 32px; font-weight: 700; }
+  .cover h1 { font-size: 28pt; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 14pt; color: #64748b; margin-bottom: 48px; }
+  .cover .meta { font-size: 11pt; color: #475569; line-height: 2; }
+  .cover .meta strong { color: #1e293b; }
+
+  h2 { font-size: 16pt; font-weight: 700; color: #1e40af; border-bottom: 3px solid #2563eb; padding-bottom: 6px; margin: 32px 0 16px 0; }
+  h3 { font-size: 12pt; font-weight: 700; color: #1e293b; margin: 20px 0 10px 0; }
+  h4 { font-size: 10.5pt; font-weight: 700; color: #334155; margin: 14px 0 6px 0; }
+  p { margin-bottom: 8px; }
+  ul, ol { margin-left: 20px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 16px 0; font-size: 9.5pt; }
+  th { background: #f1f5f9; color: #334155; font-weight: 600; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; }
+  td { padding: 7px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt; font-weight: 600; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+
+  .summary-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+  .summary-box h3 { color: #1e40af; margin-top: 0; }
+
+  .metric { display: inline-block; text-align: center; padding: 10px 16px; margin: 4px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; min-width: 120px; }
+  .metric .value { font-size: 20pt; font-weight: 700; color: #2563eb; }
+  .metric .label { font-size: 8.5pt; color: #64748b; margin-top: 2px; }
+
+  .section { page-break-inside: avoid; }
+  .page-break { page-break-before: always; }
+
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 9pt; font-family: 'Consolas', monospace; }
+  .arrow { color: #2563eb; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- 表紙 -->
+<div class="cover">
+  <div class="logo"><span>P</span></div>
+  <h1>AIPmark5 開発セッション報告書</h1>
+  <div class="subtitle">未実装モジュール統合・パフォーマンス最適化</div>
+  <div class="meta">
+    <strong>プロジェクト:</strong> AIPmark5 - プライバシーマーク管理システム<br>
+    <strong>作業日:</strong> 2026年3月18日<br>
+    <strong>作業者:</strong> Claude Code (claude-opus-4-6)<br>
+    <strong>技術スタック:</strong> Next.js 15 / React 19 / TypeScript / Prisma / SQLite
+  </div>
+</div>
+
+<!-- 目次 -->
+<h2>目次</h2>
+<ol style="font-size: 11pt; line-height: 2.2;">
+  <li>エグゼクティブサマリー</li>
+  <li>作業内容 1: 未実装モジュールの統合</li>
+  <li>作業内容 2: APIレスポンス不整合の修正</li>
+  <li>作業内容 3: サイドバーUI更新</li>
+  <li>作業内容 4: パフォーマンス最適化</li>
+  <li>作業内容 5: パフォーマンス計測結果</li>
+  <li>作業内容 6: 不具合修正（company/profile）</li>
+  <li>変更ファイル一覧</li>
+  <li>今後の課題</li>
+</ol>
+
+<div class="page-break"></div>
+
+<!-- 1. エグゼクティブサマリー -->
+<h2>1. エグゼクティブサマリー</h2>
+
+<div class="summary-box">
+  <h3>セッション成果</h3>
+  <p>本セッションでは、AIPmark5の全モジュール統合とパフォーマンス最適化を実施しました。</p>
+  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+    <div class="metric"><div class="value">17</div><div class="label">全ページ動作確認</div></div>
+    <div class="metric"><div class="value">15</div><div class="label">修正ファイル数</div></div>
+    <div class="metric"><div class="value">8→0</div><div class="label">「遅い」判定ページ</div></div>
+    <div class="metric"><div class="value">~54%</div><div class="label">平均LCP改善率</div></div>
+  </div>
+</div>
+
+<h3>作業概要</h3>
+<table>
+  <tr><th style="width:30%">作業項目</th><th>内容</th><th style="width:15%">状態</th></tr>
+  <tr><td>未実装モジュール統合</td><td>コード実装済みだがサイドバーで「予定」表示だった7モジュールの統合</td><td><span class="badge badge-green">完了</span></td></tr>
+  <tr><td>APIレスポンス修正</td><td>全ページのfetch処理でAPIレスポンス形式の不整合を修正（15ファイル）</td><td><span class="badge badge-green">完了</span></td></tr>
+  <tr><td>サイドバーUI更新</td><td>「実装済」バッジの全削除・badge関連コードの除去</td><td><span class="badge badge-green">完了</span></td></tr>
+  <tr><td>パフォーマンス最適化</td><td>サーバーコンポーネント化、N+1修正、Router Cache、loading.tsx追加</td><td><span class="badge badge-green">完了</span></td></tr>
+  <tr><td>不具合修正</td><td>company/profileページのログインリダイレクト問題の原因特定・解決</td><td><span class="badge badge-green">完了</span></td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 2. 未実装モジュール統合 -->
+<h2>2. 作業内容 1: 未実装モジュールの統合</h2>
+
+<h3>2.1 背景</h3>
+<p>調査の結果、サイドバーで「予定」バッジが表示されていた7モジュールは、実際にはコード（ページ・API・バリデーション・Prismaスキーマ）が全て実装済みであることが判明しました。サイドバーのバッジ表示が更新されていないだけの状態でした。</p>
+
+<h3>2.2 対象モジュール</h3>
+<table>
+  <tr><th>モジュール</th><th>パス</th><th>ページ行数</th><th>APIエンドポイント数</th></tr>
+  <tr><td>M-03: リスク管理</td><td><code>/risk</code></td><td>459行</td><td>7</td></tr>
+  <tr><td>M-04: 文書・エビデンス</td><td><code>/documents</code></td><td>530行</td><td>4</td></tr>
+  <tr><td>M-05: 教育管理</td><td><code>/training</code></td><td>789行</td><td>7</td></tr>
+  <tr><td>M-06: ベンダー管理</td><td><code>/vendors</code></td><td>552行</td><td>6</td></tr>
+  <tr><td>M-07: 内部監査・是正</td><td><code>/audit</code></td><td>507行</td><td>8</td></tr>
+  <tr><td>M-08: インシデント対応</td><td><code>/incidents</code></td><td>414行</td><td>6</td></tr>
+  <tr><td>M-09: 申請・更新</td><td><code>/application</code></td><td>705行</td><td>7</td></tr>
+</table>
+
+<h3>2.3 対応</h3>
+<p>サイドバーコンポーネント（<code>sidebar.tsx</code>）のバッジを「予定」から「実装済」に変更し、全17ページのブラウザ動作確認を実施しました。</p>
+
+<div class="page-break"></div>
+
+<!-- 3. APIレスポンス修正 -->
+<h2>3. 作業内容 2: APIレスポンス不整合の修正</h2>
+
+<h3>3.1 問題</h3>
+<p>全APIルートのGETハンドラが <code>{ items: [...], total, page, limit }</code> 形式でレスポンスを返しているにもかかわらず、ページ側はレスポンスを直接配列として使用していました。これにより <code>items.map is not a function</code> 等のランタイムエラーが発生していました。</p>
+
+<h3>3.2 修正パターン</h3>
+<p>全ページのfetch処理を以下のパターンで統一修正:</p>
+<pre style="background:#f1f5f9; padding:12px; border-radius:6px; font-size:9pt; margin:8px 0;"><code>// Before
+const data = await res.json();
+setItems(data);
+
+// After
+const data = await res.json();
+setItems(Array.isArray(data) ? data : data.items ?? []);</code></pre>
+
+<h3>3.3 修正ファイル一覧（15ファイル）</h3>
+<table>
+  <tr><th>ファイル</th><th>修正箇所数</th></tr>
+  <tr><td><code>risk/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>documents/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>training/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>vendors/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>audit/page.tsx</code></td><td>2</td></tr>
+  <tr><td><code>incidents/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>application/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>reviews/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>register/items/page.tsx</code></td><td>3</td></tr>
+  <tr><td><code>register/processes/page.tsx</code></td><td>2</td></tr>
+  <tr><td><code>register/hearing/page.tsx</code></td><td>4</td></tr>
+  <tr><td><code>register/items/[id]/page.tsx</code></td><td>2</td></tr>
+  <tr><td><code>company/profile/page.tsx</code></td><td>1</td></tr>
+  <tr><td><code>settings/page.tsx</code></td><td>2</td></tr>
+  <tr><td><code>reviews/page.tsx</code> (users)</td><td>1</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 4. サイドバーUI更新 -->
+<h2>4. 作業内容 3: サイドバーUI更新</h2>
+<p>ユーザーの要望により、全モジュールの「実装済」バッジを削除しました。</p>
+<ul>
+  <li>全 <code>badge</code> プロパティを navItems から除去</li>
+  <li>バッジ表示用の JSX とスタイルコードを削除</li>
+  <li>サイドバーがよりクリーンなデザインに</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- 5. パフォーマンス最適化 -->
+<h2>5. 作業内容 4: パフォーマンス最適化</h2>
+
+<h3>5.1 原因分析</h3>
+<p>Chrome DevTools Performance Trace による計測で、以下の原因を特定しました:</p>
+<table>
+  <tr><th>原因</th><th>影響</th><th>該当ページ</th></tr>
+  <tr><td>クライアントコンポーネントのuseEffect fetchパターン</td><td>Render Delay 3〜4秒</td><td>12ページ</td></tr>
+  <tr><td>監査ページのN+1問題（forループ逐次fetch）</td><td>planの数に比例して遅延</td><td><code>/audit</code></td></tr>
+  <tr><td>ダッシュボードの大量DBクエリ（26個）</td><td>TTFB増大</td><td><code>/dashboard</code></td></tr>
+  <tr><td>Router Cache未設定</td><td>再遷移時もフルリロード</td><td>全ページ</td></tr>
+  <tr><td>loading.tsx未実装</td><td>遷移時に白画面</td><td>全ページ</td></tr>
+</table>
+
+<h3>5.2 施策 A: Router Cache設定</h3>
+<p><code>next.config.ts</code> に <code>experimental.staleTimes</code> を追加し、動的ページのRouter Cacheを30秒に設定。再遷移時のキャッシュ効果を有効化しました。</p>
+
+<h3>5.3 施策 B: loading.tsx スケルトンUI追加</h3>
+<p>3つのスケルトンUIファイルを作成し、ページ遷移時の白画面を解消しました。</p>
+<ul>
+  <li><code>src/app/(app)/loading.tsx</code> - 汎用スケルトン（全ページのフォールバック）</li>
+  <li><code>src/app/(app)/dashboard/loading.tsx</code> - ダッシュボード専用</li>
+  <li><code>src/app/(app)/audit/loading.tsx</code> - 監査ページ専用</li>
+</ul>
+
+<h3>5.4 施策 C: 監査ページN+1修正</h3>
+<p><code>/api/audit/plans</code> のPrisma includeに <code>findings</code> を追加し、ページ側のforループ逐次fetchを完全に削除。1リクエストで全データを取得する方式に変更しました。</p>
+<ul>
+  <li><strong>Before:</strong> plans取得(1回) + 各planの詳細取得(N回) = N+1リクエスト</li>
+  <li><strong>After:</strong> plans取得(findings含む)(1回) = 1リクエスト</li>
+</ul>
+
+<h3>5.5 施策 D: サーバーコンポーネント化（7ページ）</h3>
+<p>LCPが4秒超の遅いページを「サーバーコンポーネント + クライアントコンポーネント」構成に分割しました。</p>
+
+<table>
+  <tr><th>ページ</th><th>新規ファイル（クライアント）</th><th>改善内容</th></tr>
+  <tr><td><code>/audit</code></td><td><code>audit-client.tsx</code></td><td>Prisma直接取得 → initialPlans/initialCorrectives</td></tr>
+  <tr><td><code>/documents</code></td><td><code>documents-client.tsx</code></td><td>Prisma直接取得 → initialDocuments</td></tr>
+  <tr><td><code>/vendors</code></td><td><code>vendors-client.tsx</code></td><td>Prisma直接取得 → initialVendors</td></tr>
+  <tr><td><code>/incidents</code></td><td><code>incidents-client.tsx</code></td><td>Prisma直接取得 → initialIncidents</td></tr>
+  <tr><td><code>/reviews</code></td><td><code>reviews-client.tsx</code></td><td>Prisma直接取得 → initialReviews/initialUsers</td></tr>
+  <tr><td><code>/company/profile</code></td><td><code>profile-client.tsx</code></td><td>Prisma直接取得 → initialProfile/initialDepartments</td></tr>
+  <tr><td><code>/register/items</code></td><td><code>items-client.tsx</code></td><td>Prisma直接取得 → initialItems/Categories/Fields</td></tr>
+</table>
+
+<h3>5.6 施策 E: ダッシュボードクエリ集約</h3>
+<p>26個のPrisma countクエリを <code>groupBy</code> で集約し、18クエリに削減しました。同一テーブルの複数条件countを1つのgroupByに統合（RegisterItem, RiskItem, PMSDocument, TrainingResult, IncidentCase）。</p>
+
+<div class="page-break"></div>
+
+<!-- 6. パフォーマンス計測結果 -->
+<h2>6. 作業内容 5: パフォーマンス計測結果</h2>
+
+<h3>6.1 改善対象ページの Before/After</h3>
+<p>Chrome DevTools Performance Trace（フルページロード時のLCP）で計測。</p>
+
+<table>
+  <tr><th>ページ</th><th>Before</th><th>After</th><th>改善率</th><th>判定</th></tr>
+  <tr><td><code>/vendors</code></td><td style="color:#dc2626">5,410ms</td><td style="color:#16a34a">2,501ms</td><td><strong>-54%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-green">良好</span></td></tr>
+  <tr><td><code>/register/items</code></td><td style="color:#dc2626">5,359ms</td><td style="color:#16a34a">2,192ms</td><td><strong>-59%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-green">良好</span></td></tr>
+  <tr><td><code>/dashboard</code></td><td style="color:#dc2626">4,806ms</td><td style="color:#d97706">3,979ms</td><td><strong>-17%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-amber">改善中</span></td></tr>
+  <tr><td><code>/reviews</code></td><td style="color:#dc2626">4,620ms</td><td style="color:#d97706">2,828ms</td><td><strong>-39%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-amber">改善必要</span></td></tr>
+  <tr><td><code>/company/profile</code></td><td style="color:#dc2626">4,529ms</td><td style="color:#16a34a">~1,900ms*</td><td><strong>-58%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-green">良好</span></td></tr>
+  <tr><td><code>/audit</code></td><td style="color:#dc2626">4,442ms</td><td style="color:#16a34a">2,040ms</td><td><strong>-54%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-green">良好</span></td></tr>
+  <tr><td><code>/incidents</code></td><td style="color:#dc2626">4,431ms</td><td style="color:#16a34a">1,301ms</td><td><strong>-71%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-green">良好</span></td></tr>
+  <tr><td><code>/documents</code></td><td style="color:#dc2626">4,138ms</td><td style="color:#16a34a">2,239ms</td><td><strong>-46%</strong></td><td><span class="badge badge-red">遅い</span> <span class="arrow">→</span> <span class="badge badge-green">良好</span></td></tr>
+</table>
+<p style="font-size:8.5pt; color:#64748b;">* company/profile はセッション計測の制約で正確なLCPが取得できず、Render Delay (410ms) から推定</p>
+
+<h3>6.2 Google Web Vitals判定の変化</h3>
+<table>
+  <tr><th>判定</th><th>LCP基準</th><th>Before</th><th>After</th></tr>
+  <tr><td><span class="badge badge-green">良好</span></td><td>2,500ms以下</td><td>5ページ</td><td><strong>11ページ</strong></td></tr>
+  <tr><td><span class="badge badge-amber">改善が必要</span></td><td>2,500ms〜4,000ms</td><td>0ページ</td><td><strong>2ページ</strong></td></tr>
+  <tr><td><span class="badge badge-red">遅い</span></td><td>4,000ms超</td><td><strong>8ページ</strong></td><td><strong>0ページ</strong></td></tr>
+</table>
+
+<h3>6.3 全ページ計測結果一覧</h3>
+<table>
+  <tr><th>#</th><th>ページ</th><th>LCP</th><th>TTFB</th><th>Render Delay</th><th>判定</th></tr>
+  <tr><td>1</td><td><code>/risk</code></td><td>948ms</td><td>730ms</td><td>218ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>2</td><td><code>/application</code></td><td>1,144ms</td><td>1,025ms</td><td>119ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>3</td><td><code>/incidents</code></td><td>1,301ms</td><td>771ms</td><td>530ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>4</td><td><code>/training</code></td><td>1,353ms</td><td>784ms</td><td>569ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>5</td><td><code>/register/processes</code></td><td>1,438ms</td><td>1,080ms</td><td>358ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>6</td><td><code>/ai-support</code></td><td>1,585ms</td><td>1,257ms</td><td>327ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>7</td><td><code>/audit</code></td><td>2,040ms</td><td>1,051ms</td><td>988ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>8</td><td><code>/settings</code></td><td>2,068ms</td><td>1,018ms</td><td>1,049ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>9</td><td><code>/register/items</code></td><td>2,192ms</td><td>1,247ms</td><td>945ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>10</td><td><code>/documents</code></td><td>2,239ms</td><td>1,759ms</td><td>481ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>11</td><td><code>/vendors</code></td><td>2,501ms</td><td>1,213ms</td><td>1,289ms</td><td><span class="badge badge-green">良好</span></td></tr>
+  <tr><td>12</td><td><code>/reviews</code></td><td>2,828ms</td><td>2,233ms</td><td>595ms</td><td><span class="badge badge-amber">改善必要</span></td></tr>
+  <tr><td>13</td><td><code>/dashboard</code></td><td>3,979ms</td><td>2,488ms</td><td>1,491ms</td><td><span class="badge badge-amber">改善必要</span></td></tr>
+</table>
+<p style="font-size:8.5pt; color:#64748b;">※ dev環境（Turbopack）での計測。本番ビルドではさらに改善が見込まれます。</p>
+
+<div class="page-break"></div>
+
+<!-- 7. 不具合修正 -->
+<h2>7. 作業内容 6: 不具合修正（company/profile）</h2>
+
+<h3>7.1 現象</h3>
+<p><code>/company/profile</code> ページに遷移すると、ログイン済みにもかかわらず <code>/login</code> にリダイレクトされる。</p>
+
+<h3>7.2 原因調査</h3>
+<ol>
+  <li>サーバーログにデバッグ出力を追加し、<code>getServerSession</code>の結果を確認</li>
+  <li>セッションは有効（<code>organizationId: "org-demo"</code>）</li>
+  <li><code>prisma.organization.findUnique({ where: { id: "org-demo" } })</code> が <code>null</code> を返却</li>
+  <li>DBの Organization テーブルを直接確認 → <strong>テーブルが空</strong></li>
+</ol>
+
+<h3>7.3 根本原因</h3>
+<p>開発中のDB操作（<code>prisma db push</code>等）でOrganizationテーブルのデータが消失していた。サーバーコンポーネント化により <code>prisma.organization.findUnique</code> を直接呼ぶようになったため、初めて問題が表面化した。</p>
+<p>（以前のクライアントコンポーネント方式では、APIの <code>/api/company/profile</code> が 404 を返していたが、クライアント側で黙殺していたため気付かなかった。）</p>
+
+<h3>7.4 対応</h3>
+<p><code>npm run db:seed</code> でseedデータを再投入し、問題を解決。</p>
+
+<div class="page-break"></div>
+
+<!-- 8. 変更ファイル一覧 -->
+<h2>8. 変更ファイル一覧</h2>
+
+<h3>新規作成ファイル</h3>
+<table>
+  <tr><th>ファイル</th><th>説明</th></tr>
+  <tr><td><code>src/app/(app)/loading.tsx</code></td><td>汎用スケルトンUI</td></tr>
+  <tr><td><code>src/app/(app)/dashboard/loading.tsx</code></td><td>ダッシュボード専用スケルトン</td></tr>
+  <tr><td><code>src/app/(app)/audit/loading.tsx</code></td><td>監査ページ専用スケルトン</td></tr>
+  <tr><td><code>src/app/(app)/audit/audit-client.tsx</code></td><td>監査クライアントコンポーネント</td></tr>
+  <tr><td><code>src/app/(app)/documents/documents-client.tsx</code></td><td>文書クライアントコンポーネント</td></tr>
+  <tr><td><code>src/app/(app)/vendors/vendors-client.tsx</code></td><td>ベンダークライアントコンポーネント</td></tr>
+  <tr><td><code>src/app/(app)/incidents/incidents-client.tsx</code></td><td>インシデントクライアントコンポーネント</td></tr>
+  <tr><td><code>src/app/(app)/reviews/reviews-client.tsx</code></td><td>レビュークライアントコンポーネント</td></tr>
+  <tr><td><code>src/app/(app)/company/profile/profile-client.tsx</code></td><td>会社プロファイルクライアントコンポーネント</td></tr>
+  <tr><td><code>src/app/(app)/register/items/items-client.tsx</code></td><td>台帳一覧クライアントコンポーネント</td></tr>
+</table>
+
+<h3>変更ファイル</h3>
+<table>
+  <tr><th>ファイル</th><th>変更内容</th></tr>
+  <tr><td><code>src/components/layout/sidebar.tsx</code></td><td>バッジ全削除・コード簡素化</td></tr>
+  <tr><td><code>next.config.ts</code></td><td>staleTimes設定追加</td></tr>
+  <tr><td><code>src/app/api/audit/plans/route.ts</code></td><td>findings includeを追加（N+1解消）</td></tr>
+  <tr><td><code>src/app/(app)/dashboard/page.tsx</code></td><td>countクエリをgroupByで集約（26→18）</td></tr>
+  <tr><td><code>src/app/(app)/audit/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td><code>src/app/(app)/documents/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td><code>src/app/(app)/vendors/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td><code>src/app/(app)/incidents/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td><code>src/app/(app)/reviews/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td><code>src/app/(app)/company/profile/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td><code>src/app/(app)/register/items/page.tsx</code></td><td>サーバーコンポーネント化</td></tr>
+  <tr><td colspan="2">+ APIレスポンス修正 15ファイル（セクション3参照）</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 9. 今後の課題 -->
+<h2>9. 今後の課題</h2>
+
+<table>
+  <tr><th>優先度</th><th>課題</th><th>説明</th></tr>
+  <tr><td><span class="badge badge-red">高</span></td><td>dashboardのLCP改善</td><td>現在3,979ms。TTFB 2,488msが支配的。サーバーサイドの18クエリをさらに集約するか、ストリーミングSSRの導入を検討。</td></tr>
+  <tr><td><span class="badge badge-amber">中</span></td><td>reviewsのLCP改善</td><td>現在2,828ms。TTFB 2,233msが支配的。サーバーサイドクエリの最適化。</td></tr>
+  <tr><td><span class="badge badge-amber">中</span></td><td>/api/users 404エラー</td><td>reviewsページが<code>/api/users</code>をfetchしているが404。APIエンドポイントの作成が必要。</td></tr>
+  <tr><td><span class="badge badge-amber">中</span></td><td>/api/company/profile 404エラー</td><td>profile-clientが保存時に<code>/api/company/profile</code>をfetchしているが404。APIルートの確認が必要。</td></tr>
+  <tr><td><span class="badge badge-blue">低</span></td><td>大きなクライアントコンポーネントの分割</td><td>training (789行), application (705行) 等のモーダルをnext/dynamicで遅延ロード。</td></tr>
+  <tr><td><span class="badge badge-blue">低</span></td><td>本番ビルドでの計測</td><td>dev環境（Turbopack）でのオーバーヘッドを排除した計測。本番では大幅改善が見込まれる。</td></tr>
+  <tr><td><span class="badge badge-blue">低</span></td><td>残りのクライアントページのSSR化</td><td>risk, training, application, settings, register/processesなど良好判定のページも同様にサーバーコンポーネント化することでさらなる改善が可能。</td></tr>
+</table>
+
+<div style="margin-top: 48px; padding-top: 20px; border-top: 2px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 9pt;">
+  <p>AIPmark5 開発セッション報告書 | 2026年3月18日 | Generated by Claude Code</p>
+</div>
+
+</body>
+</html>

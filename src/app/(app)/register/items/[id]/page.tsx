@@ -57,11 +57,11 @@ export default function ItemDetailPage({ params }: { params: Promise<{ id: strin
       fetch(`/api/register/items/${id}`).then((r) => r.json()),
       fetch("/api/master/data-categories").then((r) => r.json()),
       fetch("/api/master/data-fields").then((r) => r.json()),
-    ]).then(([data, categoryRows, fieldRows]) => {
+    ]).then(([data, categoryRaw, fieldRaw]) => {
       setItem(data);
       setForm(data);
-      setCategories(categoryRows);
-      setFields(fieldRows);
+      setCategories(Array.isArray(categoryRaw) ? categoryRaw : categoryRaw.items ?? []);
+      setFields(Array.isArray(fieldRaw) ? fieldRaw : fieldRaw.items ?? []);
       setLoading(false);
     });
   }, [id]);
