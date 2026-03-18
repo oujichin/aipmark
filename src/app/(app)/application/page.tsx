@@ -117,10 +117,11 @@ export default function ApplicationPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [showChangeModal, setShowChangeModal] = useState(false);
+  const [editingChangeReportId, setEditingChangeReportId] = useState<string | null>(null);
 
   // フォーム状態
   const [createForm, setCreateForm] = useState({ fiscalYear: new Date().getFullYear(), applicationType: "RENEWAL" });
-  const [itemForm, setItemForm] = useState({ itemType: "REGISTER_EXPORT", title: "" });
+  const [itemForm, setItemForm] = useState({ itemType: "REGISTER_EXPORT", title: "", fileName: "", filePath: "", fileSize: "", sourceDataIds: "" });
   const [changeForm, setChangeForm] = useState({ changeCategory: "ORGANIZATION", changeTitle: "", changeDetail: "", previousValue: "", currentValue: "" });
 
   // ─── データ取得 ────────────────────────────────────────────
@@ -178,17 +179,33 @@ export default function ApplicationPage() {
   const handleAddItem = async () => {
     if (!selectedPkg) return;
     try {
+      const itemBody: Record<string, unknown> = {
+        itemType: itemForm.itemType,
+        title: itemForm.title,
+      };
+      if (itemForm.fileName) itemBody.fileName = itemForm.fileName;
+      if (itemForm.filePath) itemBody.filePath = itemForm.filePath;
+      if (itemForm.fileSize) itemBody.fileSize = parseInt(itemForm.fileSize, 10);
+      if (itemForm.sourceDataIds) {
+        try {
+          itemBody.sourceDataIds = JSON.parse(itemForm.sourceDataIds) as string[];
+        } catch {
+          setError("生成元データIDはJSON配列形式で入力してください（例: [\"id1\",\"id2\"]）");
+          return;
+        }
+      }
+
       const res = await fetch(`/api/application/${selectedPkg.id}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(itemForm),
+        body: JSON.stringify(itemBody),
       });
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error ?? "追加に失敗しました");
       }
       setShowItemModal(false);
-      setItemForm({ itemType: "REGISTER_EXPORT", title: "" });
+      setItemForm({ itemType: "REGISTER_EXPORT", title: "", fileName: "", filePath: "", fileSize: "", sourceDataIds: "" });
       await fetchDetail(selectedPkg.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
@@ -209,6 +226,42 @@ export default function ApplicationPage() {
         throw new Error(errData.error ?? "追加に失敗しました");
       }
       setShowChangeModal(false);
+      setChangeForm({ changeCategory: "ORGANIZATION", changeTitle: "", changeDetail: "", previousValue: "", currentValue: "" });
+      await fetchDetail(selectedPkg.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "エラーが発生しました");
+    }
+  };
+
+  // ─── アイテムステータス更新 ──────────────────────────────────
+  const handleUpdateItemStatus = async (itemId: string, newStatus: string, errorMessage?: string) => {
+    if (!selectedPkg) return;
+    try {
+      const body: Record<string, string> = { status: newStatus };
+      if (errorMessage) body.errorMessage = errorMessage;
+      const res = await fetch(`/api/application/items/${itemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("更新に失敗しました");
+      await fetchDetail(selectedPkg.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "エラーが発生しました");
+    }
+  };
+
+  // ─── 変更報告更新 ──────────────────────────────────────────
+  const handleUpdateChangeReport = async () => {
+    if (!selectedPkg || !editingChangeReportId) return;
+    try {
+      const res = await fetch(`/api/application/change-reports/${editingChangeReportId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changeForm),
+      });
+      if (!res.ok) throw new Error("更新に失敗しました");
+      setEditingChangeReportId(null);
       setChangeForm({ changeCategory: "ORGANIZATION", changeTitle: "", changeDetail: "", previousValue: "", currentValue: "" });
       await fetchDetail(selectedPkg.id);
     } catch (err) {
@@ -302,6 +355,31 @@ export default function ApplicationPage() {
           </div>
         </div>
 
+        {/* 不足資料チェックリスト */}
+        {(() => {
+          const requiredTypes = ["REGISTER_EXPORT", "RISK_REPORT", "TRAINING_SUMMARY", "AUDIT_SUMMARY", "REVIEW_SUMMARY", "DOCUMENT_LIST", "CHANGE_REPORT"];
+          const existingTypes = new Set(selectedPkg.items.map((i) => i.itemType));
+          const missing = requiredTypes.filter((t) => !existingTypes.has(t));
+          return (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+              <h2 className="text-sm font-semibold text-slate-700 mb-2">必要資料チェック</h2>
+              {missing.length > 0 && (
+                <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                  {missing.length}件の資料が不足しています
+                </div>
+              )}
+              <div className="grid grid-cols-4 gap-2">
+                {requiredTypes.map((t) => (
+                  <div key={t} className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${existingTypes.has(t) ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                    <span>{existingTypes.has(t) ? "\u2713" : "\u2717"}</span>
+                    {ITEM_TYPE_LABELS[t] ?? t}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* アイテム一覧 */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-6">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
@@ -328,6 +406,7 @@ export default function ApplicationPage() {
                   <th className="px-4 py-2 text-left">ファイル名</th>
                   <th className="px-4 py-2 text-left">サイズ</th>
                   <th className="px-4 py-2 text-left">ステータス</th>
+                  <th className="px-4 py-2 text-left">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -348,6 +427,18 @@ export default function ApplicationPage() {
                       {item.errorMessage && (
                         <span className="ml-2 text-xs text-red-500">{item.errorMessage}</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1">
+                        {item.status !== "GENERATED" && (
+                          <button onClick={() => handleUpdateItemStatus(item.id, "GENERATED")}
+                            className="text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100">生成済</button>
+                        )}
+                        {item.status !== "ERROR" && (
+                          <button onClick={() => handleUpdateItemStatus(item.id, "ERROR", "手動エラー設定")}
+                            className="text-xs px-2 py-0.5 bg-red-50 text-red-600 rounded hover:bg-red-100">エラー</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -382,6 +473,7 @@ export default function ApplicationPage() {
                   <th className="px-4 py-2 text-left">変更前</th>
                   <th className="px-4 py-2 text-left">変更後</th>
                   <th className="px-4 py-2 text-left">登録日</th>
+                  <th className="px-4 py-2 text-left">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -402,6 +494,18 @@ export default function ApplicationPage() {
                     <td className="px-4 py-3 text-sm text-slate-500">{cr.currentValue ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-500">
                       {new Date(cr.createdAt).toLocaleDateString("ja-JP")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => {
+                        setEditingChangeReportId(cr.id);
+                        setChangeForm({
+                          changeCategory: cr.changeCategory,
+                          changeTitle: cr.changeTitle,
+                          changeDetail: cr.changeDetail ?? "",
+                          previousValue: cr.previousValue ?? "",
+                          currentValue: cr.currentValue ?? "",
+                        });
+                      }} className="text-xs text-blue-600 hover:underline">編集</button>
                     </td>
                   </tr>
                 ))}
@@ -437,6 +541,35 @@ export default function ApplicationPage() {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     placeholder="例: 個人情報管理台帳エクスポート"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ファイル名</label>
+                    <input type="text" value={itemForm.fileName}
+                      onChange={(e) => setItemForm({ ...itemForm, fileName: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                      placeholder="例: register-2025.xlsx" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ファイルサイズ(bytes)</label>
+                    <input type="number" value={itemForm.fileSize}
+                      onChange={(e) => setItemForm({ ...itemForm, fileSize: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">ファイルパス</label>
+                  <input type="text" value={itemForm.filePath}
+                    onChange={(e) => setItemForm({ ...itemForm, filePath: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                    placeholder="例: /exports/2025/" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">生成元データID (JSON配列)</label>
+                  <textarea value={itemForm.sourceDataIds}
+                    onChange={(e) => setItemForm({ ...itemForm, sourceDataIds: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono"
+                    rows={2} placeholder='例: ["id1","id2"]' />
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-6">
@@ -531,6 +664,52 @@ export default function ApplicationPage() {
                 >
                   追加
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 変更報告編集モーダル */}
+        {editingChangeReportId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">変更報告編集</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">カテゴリ</label>
+                  <select value={changeForm.changeCategory} onChange={(e) => setChangeForm({ ...changeForm, changeCategory: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                    {Object.entries(CHANGE_CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">変更タイトル</label>
+                  <input type="text" value={changeForm.changeTitle} onChange={(e) => setChangeForm({ ...changeForm, changeTitle: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">変更詳細</label>
+                  <textarea value={changeForm.changeDetail} onChange={(e) => setChangeForm({ ...changeForm, changeDetail: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" rows={2} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">変更前</label>
+                    <input type="text" value={changeForm.previousValue} onChange={(e) => setChangeForm({ ...changeForm, previousValue: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">変更後</label>
+                    <input type="text" value={changeForm.currentValue} onChange={(e) => setChangeForm({ ...changeForm, currentValue: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <button onClick={() => { setEditingChangeReportId(null); setChangeForm({ changeCategory: "ORGANIZATION", changeTitle: "", changeDetail: "", previousValue: "", currentValue: "" }); }}
+                  className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800">キャンセル</button>
+                <button onClick={handleUpdateChangeReport} disabled={!changeForm.changeTitle}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">更新</button>
               </div>
             </div>
           </div>

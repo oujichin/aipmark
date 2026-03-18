@@ -122,9 +122,8 @@ function Heatmap({ items }: { items: RiskItem[] }) {
             <div className="text-center text-xs text-slate-500 font-medium pb-1">影響度 3</div>
             {/* Data rows */}
             {levels.map((likelihood) => (
-              <>
+              <div key={`row-${likelihood}`} className="contents">
                 <div
-                  key={`label-${likelihood}`}
                   className="flex items-center justify-end pr-2 text-xs text-slate-500 font-medium"
                 >
                   {likelihood}
@@ -137,7 +136,7 @@ function Heatmap({ items }: { items: RiskItem[] }) {
                     items={items}
                   />
                 ))}
-              </>
+              </div>
             ))}
           </div>
         </div>

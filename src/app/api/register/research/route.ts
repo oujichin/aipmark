@@ -106,7 +106,7 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const parsed = parseBody(updateResearchProfileSchema, body);
     if (!parsed.success) return parsed.error;
-    const { id, hypotheses, ...profileData } = parsed.data;
+    const { id, hypotheses, newSources, ...profileData } = parsed.data;
 
     // テナント分離チェック
     const existing = await prisma.researchProfile.findFirst({
@@ -117,6 +117,20 @@ export async function PUT(req: NextRequest) {
     }
 
     const profile = await prisma.$transaction(async (tx) => {
+      // 新規ソースがあれば先に追加
+      if (newSources && newSources.length > 0) {
+        await tx.researchSource.createMany({
+          data: newSources.map((s) => ({
+            researchProfileId: id,
+            sourceType: s.sourceType,
+            url: s.url ?? null,
+            title: s.title,
+            snippet: s.snippet ?? null,
+            relevanceNote: s.relevanceNote ?? null,
+          })),
+        });
+      }
+
       const updated = await tx.researchProfile.update({
         where: { id },
         data: {

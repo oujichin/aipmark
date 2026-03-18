@@ -1,4 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+// Prisma v6 + Node 22: #main-entry-point 回避のため直接index.jsを参照
+import path from "path";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PrismaClient } = require(path.resolve(process.cwd(), "node_modules/.prisma/client/index.js")) as typeof import("@prisma/client");
 import { DATA_CATEGORY_SEED, DATA_FIELD_DEFINITION_SEED } from "../src/lib/personal-data";
 
 const prisma = new PrismaClient();

@@ -34,6 +34,24 @@ interface IncidentCase {
   _count?: { actions: number };
 }
 
+interface IncidentAction {
+  id: string;
+  incidentId: string;
+  actionType: string;
+  title: string;
+  description: string | null;
+  performedById: string | null;
+  performedAt: string | null;
+  dueDate: string | null;
+  status: string;
+  createdAt: string;
+  performedBy?: { id: string; name: string } | null;
+}
+
+interface IncidentDetail extends IncidentCase {
+  actions: IncidentAction[];
+}
+
 type StatusFilter = "" | "REPORTED" | "ASSESSING" | "RESPONDING" | "CORRECTING" | "CLOSED";
 
 export interface IncidentsClientProps {
@@ -68,6 +86,22 @@ const CATEGORY_LABELS: Record<string, string> = {
   MISDIRECTION: "誤送信",
   THEFT: "盗難",
   OTHER: "その他",
+};
+
+const ACTION_TYPE_LABELS: Record<string, string> = {
+  INITIAL_RESPONSE: "初動対応",
+  SPEED_REPORT: "速報提出",
+  NOTIFICATION: "本人通知",
+  INVESTIGATION: "調査",
+  FULL_REPORT: "確報提出",
+  PREVENTION: "再発防止",
+  OTHER: "その他",
+};
+
+const ACTION_STATUS: Record<string, { label: string; cls: string }> = {
+  PENDING: { label: "未着手", cls: "bg-slate-100 text-slate-600" },
+  IN_PROGRESS: { label: "対応中", cls: "bg-blue-100 text-blue-700" },
+  COMPLETED: { label: "完了", cls: "bg-green-100 text-green-700" },
 };
 
 // ───────────────────────────────────────────────────
@@ -115,7 +149,7 @@ function DeadlineBar({ label, deadline, reportedAt }: { label: string; deadline:
 }
 
 // ───────────────────────────────────────────────────
-// モーダル
+// 報告モーダル
 // ───────────────────────────────────────────────────
 
 function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
@@ -131,9 +165,7 @@ function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (da
     e.preventDefault();
     setSubmitting(true);
     await onSubmit({
-      title,
-      description,
-      category,
+      title, description, category,
       incidentDate: incidentDate ? new Date(incidentDate).toISOString() : null,
       discoveredDate: discoveredDate ? new Date(discoveredDate).toISOString() : null,
       containsMyNumber,
@@ -152,86 +184,377 @@ function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (da
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">タイトル *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="インシデントの概要を入力"
-              />
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" placeholder="インシデントの概要を入力" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">説明 *</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="詳細な状況を記述"
-              />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" placeholder="詳細な状況を記述" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">カテゴリ</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                >
-                  {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                  {Object.entries(CATEGORY_LABELS).map(([key, label]) => (<option key={key} value={key}>{label}</option>))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">発生日</label>
-                <input
-                  type="date"
-                  value={incidentDate}
-                  onChange={(e) => setIncidentDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                />
+                <input type="date" value={incidentDate} onChange={(e) => setIncidentDate(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">発見日</label>
-                <input
-                  type="date"
-                  value={discoveredDate}
-                  onChange={(e) => setDiscoveredDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                />
+                <input type="date" value={discoveredDate} onChange={(e) => setDiscoveredDate(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
               </div>
               <div className="flex items-end pb-2">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={containsMyNumber}
-                    onChange={(e) => setContainsMyNumber(e.target.checked)}
-                    className="rounded border-slate-300"
-                  />
+                  <input type="checkbox" checked={containsMyNumber} onChange={(e) => setContainsMyNumber(e.target.checked)} className="rounded border-slate-300" />
                   マイナンバーを含む
                 </label>
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                disabled={submitting || !title || !description}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+              <button type="submit" disabled={submitting || !title || !description}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 {submitting ? "報告中..." : "報告する"}
               </button>
             </div>
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────
+// インシデント詳細パネル
+// ───────────────────────────────────────────────────
+
+function DetailPanel({ incidentId, onClose }: { incidentId: string; onClose: () => void }) {
+  const [detail, setDetail] = useState<IncidentDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showAssessForm, setShowAssessForm] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  // 評価フォーム（severity と affectedCount のみ。速報/確報の要否・期限はサーバーが自動計算）
+  const [assessForm, setAssessForm] = useState({
+    severity: "LOW",
+    affectedCount: 0,
+  });
+  const [closureNote, setClosureNote] = useState("");
+
+  // アクションフォーム
+  const [actionForm, setActionForm] = useState({
+    actionType: "INITIAL_RESPONSE",
+    title: "",
+    description: "",
+    dueDate: "",
+  });
+
+  const fetchDetail = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`/api/incidents/${incidentId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setDetail(data);
+      const sev = data.severity && data.severity !== "UNASSESSED" ? data.severity : "LOW";
+      setAssessForm({
+        severity: sev,
+        affectedCount: data.affectedCount ?? 0,
+      });
+    }
+    setLoading(false);
+  }, [incidentId]);
+
+  useEffect(() => { fetchDetail(); }, [fetchDetail]);
+
+  const handleAssess = async () => {
+    await fetch(`/api/incidents/${incidentId}/assess`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        severity: assessForm.severity,
+        affectedCount: assessForm.affectedCount || undefined,
+      }),
+    });
+    setShowAssessForm(false);
+    fetchDetail();
+  };
+
+  const handleAddAction = async () => {
+    await fetch(`/api/incidents/${incidentId}/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: actionForm.actionType,
+        title: actionForm.title,
+        description: actionForm.description || undefined,
+        dueDate: actionForm.dueDate ? new Date(actionForm.dueDate).toISOString() : undefined,
+      }),
+    });
+    setShowActionModal(false);
+    setActionForm({ actionType: "INITIAL_RESPONSE", title: "", description: "", dueDate: "" });
+    fetchDetail();
+  };
+
+  const handleUpdateActionStatus = async (actionId: string, newStatus: string) => {
+    await fetch(`/api/incidents/actions/${actionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    fetchDetail();
+  };
+
+  const handleClose = async () => {
+    await fetch(`/api/incidents/${incidentId}/close`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ closureNote: closureNote || undefined }),
+    });
+    setShowCloseConfirm(false);
+    setClosureNote("");
+    fetchDetail();
+  };
+
+  const handleMarkReported = async (field: "speedReportedAt" | "fullReportedAt") => {
+    await fetch(`/api/incidents/${incidentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: new Date().toISOString() }),
+    });
+    fetchDetail();
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/30 flex items-start justify-end z-50">
+        <div className="w-[650px] h-full bg-white shadow-xl flex items-center justify-center">
+          <span className="text-sm text-slate-400">読み込み中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!detail) return null;
+
+  const sev = SEVERITY_CONFIG[detail.severity] ?? SEVERITY_CONFIG.UNASSESSED;
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-start justify-end z-50">
+      <div className="w-[650px] h-full bg-white shadow-xl overflow-y-auto">
+        <div className="p-6">
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-900">{detail.title}</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+          </div>
+
+          {/* ステータス・深刻度 */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${detail.status === "CLOSED" ? "bg-slate-100 text-slate-600" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
+              {STATUS_LABELS[detail.status] ?? detail.status}
+            </span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${sev.bg} ${sev.text} ${sev.border}`}>
+              {sev.label}
+            </span>
+            <span className="text-xs text-slate-400">{CATEGORY_LABELS[detail.category] ?? detail.category}</span>
+          </div>
+
+          {/* 基本情報 */}
+          <div className="bg-slate-50 rounded-lg p-3 mb-4 text-sm space-y-1">
+            <p className="text-slate-700">{detail.description}</p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 pt-2">
+              <div>発生日: {formatDate(detail.incidentDate)}</div>
+              <div>発見日: {formatDate(detail.discoveredDate)}</div>
+              <div>影響人数: {detail.affectedCount ?? "不明"}</div>
+              <div>報告者: {detail.reportedBy?.name ?? "-"}</div>
+            </div>
+          </div>
+
+          {/* 報告期限・提出管理 */}
+          {(detail.requiresSpeedReport || detail.requiresFullReport) && (
+            <div className="mb-4 border border-slate-200 rounded-lg p-3 space-y-2">
+              <h3 className="text-xs font-bold text-slate-600 mb-1">報告状況</h3>
+              {detail.requiresSpeedReport && (
+                <div className="flex items-center justify-between">
+                  <DeadlineBar label="速報" deadline={detail.speedReportDeadline} reportedAt={detail.speedReportedAt} />
+                  {!detail.speedReportedAt && detail.status !== "CLOSED" && (
+                    <button onClick={() => handleMarkReported("speedReportedAt")}
+                      className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">速報提出済にする</button>
+                  )}
+                </div>
+              )}
+              {detail.requiresFullReport && (
+                <div className="flex items-center justify-between">
+                  <DeadlineBar label="確報" deadline={detail.fullReportDeadline} reportedAt={detail.fullReportedAt} />
+                  {!detail.fullReportedAt && detail.status !== "CLOSED" && (
+                    <button onClick={() => handleMarkReported("fullReportedAt")}
+                      className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">確報提出済にする</button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 評価セクション */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-slate-700">重大度評価</h3>
+              {detail.status !== "CLOSED" && (
+                <button onClick={() => setShowAssessForm(!showAssessForm)} className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100">
+                  {showAssessForm ? "閉じる" : "評価する"}
+                </button>
+              )}
+            </div>
+            {showAssessForm && (
+              <div className="border border-slate-200 rounded-lg p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">深刻度</label>
+                    <select value={assessForm.severity} onChange={(e) => setAssessForm({ ...assessForm, severity: e.target.value })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
+                      {Object.entries(SEVERITY_CONFIG).filter(([k]) => k !== "UNASSESSED").map(([k, v]) => (<option key={k} value={k}>{v.label}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">影響人数</label>
+                    <input type="number" value={assessForm.affectedCount} onChange={(e) => setAssessForm({ ...assessForm, affectedCount: parseInt(e.target.value, 10) || 0 })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  深刻度が「高」または「重大」の場合、速報（発見日から5日以内）・確報（30日 / マイナンバー含む場合60日以内）の期限が自動設定されます。
+                </p>
+                <button onClick={handleAssess} className="px-3 py-1.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700">評価を保存</button>
+              </div>
+            )}
+          </div>
+
+          {/* 対応アクション */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-slate-700">対応アクション ({detail.actions?.length ?? 0})</h3>
+              {detail.status !== "CLOSED" && (
+                <button onClick={() => setShowActionModal(true)} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">+ 追加</button>
+              )}
+            </div>
+            {(!detail.actions || detail.actions.length === 0) ? (
+              <p className="text-xs text-slate-400 text-center py-4">アクションがありません</p>
+            ) : (
+              <div className="space-y-2">
+                {detail.actions.map((action) => {
+                  const ast = ACTION_STATUS[action.status] ?? ACTION_STATUS.PENDING;
+                  return (
+                    <div key={action.id} className="border border-slate-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{ACTION_TYPE_LABELS[action.actionType] ?? action.actionType}</span>
+                          <span className="text-sm font-medium text-slate-800">{action.title}</span>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ast.cls}`}>{ast.label}</span>
+                      </div>
+                      {action.description && <p className="text-xs text-slate-500 mt-1">{action.description}</p>}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-slate-400">
+                          {action.dueDate ? `期限: ${formatDate(action.dueDate)}` : ""}
+                          {action.performedBy ? ` / ${action.performedBy.name}` : ""}
+                        </span>
+                        {detail.status !== "CLOSED" && action.status !== "COMPLETED" && (
+                          <div className="flex gap-1">
+                            {action.status === "PENDING" && (
+                              <button onClick={() => handleUpdateActionStatus(action.id, "IN_PROGRESS")} className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">開始</button>
+                            )}
+                            {action.status === "IN_PROGRESS" && (
+                              <button onClick={() => handleUpdateActionStatus(action.id, "COMPLETED")} className="text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100">完了</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* クローズ */}
+          {detail.status !== "CLOSED" && (
+            <div className="border-t border-slate-200 pt-4">
+              <button onClick={() => setShowCloseConfirm(true)} className="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800">
+                インシデントをクローズ
+              </button>
+            </div>
+          )}
+          {detail.status === "CLOSED" && detail.closedAt && (
+            <div className="border-t border-slate-200 pt-4">
+              <p className="text-xs text-slate-500">クローズ日: {formatDate(detail.closedAt)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* アクション追加モーダル */}
+      {showActionModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">対応アクション追加</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">対応区分</label>
+                <select value={actionForm.actionType} onChange={(e) => setActionForm({ ...actionForm, actionType: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                  {Object.entries(ACTION_TYPE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">タイトル *</label>
+                <input type="text" value={actionForm.title} onChange={(e) => setActionForm({ ...actionForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="対応内容の概要" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">詳細</label>
+                <textarea value={actionForm.description} onChange={(e) => setActionForm({ ...actionForm, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" rows={3} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">期限</label>
+                <input type="date" value={actionForm.dueDate} onChange={(e) => setActionForm({ ...actionForm, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setShowActionModal(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+              <button onClick={handleAddAction} disabled={!actionForm.title} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">追加</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* クローズ確認 */}
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">クローズ確認</h3>
+            <p className="text-sm text-slate-600 mb-3">このインシデントをクローズしますか？</p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">クローズコメント・再発防止策</label>
+              <textarea value={closureNote} onChange={(e) => setClosureNote(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" rows={3}
+                placeholder="対応結果の要約、再発防止策など" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setShowCloseConfirm(false); setClosureNote(""); }} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+              <button onClick={handleClose} className="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800">クローズ</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -245,6 +568,7 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
   const [showModal, setShowModal] = useState(false);
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
 
   const fetchIncidents = useCallback(async () => {
     setLoading(true);
@@ -258,7 +582,6 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
     setLoading(false);
   }, [statusFilter]);
 
-  // statusFilterが変わった時だけfetchする（初回はinitialIncidentsを使う）
   useEffect(() => {
     if (statusFilter !== "") {
       fetchIncidents();
@@ -277,7 +600,6 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
     }
   };
 
-  // サマリー計算
   const total = incidents.length;
   const activeCount = incidents.filter((i) => i.status !== "CLOSED").length;
   const closedCount = incidents.filter((i) => i.status === "CLOSED").length;
@@ -295,16 +617,12 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
         title="インシデント対応"
         description="個人情報に関するインシデントの報告・対応・再発防止策を管理します。"
         actions={
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
-          >
+          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
             + インシデント報告
           </button>
         }
       />
 
-      {/* サマリーカード */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="text-xs text-slate-500 mb-1">総件数</div>
@@ -324,31 +642,24 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
         </div>
       </div>
 
-      {/* ステータスフィルタ */}
       <div className="flex gap-2 mb-4">
-        {[
+        {([
           { value: "" as StatusFilter, label: "すべて" },
           { value: "REPORTED" as StatusFilter, label: "報告済" },
           { value: "ASSESSING" as StatusFilter, label: "評価中" },
           { value: "RESPONDING" as StatusFilter, label: "対応中" },
           { value: "CORRECTING" as StatusFilter, label: "是正中" },
           { value: "CLOSED" as StatusFilter, label: "クローズ" },
-        ].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setStatusFilter(opt.value)}
+        ]).map((opt) => (
+          <button key={opt.value} onClick={() => setStatusFilter(opt.value)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-              statusFilter === opt.value
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-            }`}
-          >
+              statusFilter === opt.value ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}>
             {opt.label}
           </button>
         ))}
       </div>
 
-      {/* インシデント一覧 */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="grid grid-cols-6 gap-4 px-4 py-3 border-b border-slate-100 bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wide">
           <div className="col-span-2">インシデント内容</div>
@@ -359,21 +670,18 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-sm text-slate-400">読み込み中...</div>
-          </div>
+          <div className="flex items-center justify-center py-16"><div className="text-sm text-slate-400">読み込み中...</div></div>
         ) : incidents.length === 0 ? (
-          <EmptyState
-            icon="🚨"
-            title="インシデントがありません"
-            description="個人情報に関するインシデントが発生した場合、速やかに報告・対応を行います。"
-          />
+          <EmptyState icon="🚨" title="インシデントがありません" description="個人情報に関するインシデントが発生した場合、速やかに報告・対応を行います。" />
         ) : (
           <div className="divide-y divide-slate-100">
             {incidents.map((incident) => {
               const sev = SEVERITY_CONFIG[incident.severity] ?? SEVERITY_CONFIG.UNASSESSED;
               return (
-                <div key={incident.id} className="grid grid-cols-6 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors">
+                <div key={incident.id}
+                  className="grid grid-cols-6 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedIncidentId(incident.id)}
+                >
                   <div className="col-span-2">
                     <div className="text-sm font-medium text-slate-900 truncate">{incident.title}</div>
                     <div className="text-xs text-slate-500 mt-0.5">
@@ -383,26 +691,16 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
                   </div>
                   <div className="text-sm text-slate-600">{formatDate(incident.incidentDate)}</div>
                   <div>
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full border ${sev.bg} ${sev.text} ${sev.border}`}>
-                      {sev.label}
-                    </span>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full border ${sev.bg} ${sev.text} ${sev.border}`}>{sev.label}</span>
                   </div>
                   <div className="space-y-1">
-                    {incident.requiresSpeedReport && (
-                      <DeadlineBar label="速報" deadline={incident.speedReportDeadline} reportedAt={incident.speedReportedAt} />
-                    )}
-                    {incident.requiresFullReport && (
-                      <DeadlineBar label="確報" deadline={incident.fullReportDeadline} reportedAt={incident.fullReportedAt} />
-                    )}
-                    {!incident.requiresSpeedReport && !incident.requiresFullReport && (
-                      <span className="text-xs text-slate-400">-</span>
-                    )}
+                    {incident.requiresSpeedReport && <DeadlineBar label="速報" deadline={incident.speedReportDeadline} reportedAt={incident.speedReportedAt} />}
+                    {incident.requiresFullReport && <DeadlineBar label="確報" deadline={incident.fullReportDeadline} reportedAt={incident.fullReportedAt} />}
+                    {!incident.requiresSpeedReport && !incident.requiresFullReport && <span className="text-xs text-slate-400">-</span>}
                   </div>
                   <div>
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      incident.status === "CLOSED"
-                        ? "bg-slate-100 text-slate-600"
-                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                      incident.status === "CLOSED" ? "bg-slate-100 text-slate-600" : "bg-blue-50 text-blue-700 border border-blue-200"
                     }`}>
                       {STATUS_LABELS[incident.status] ?? incident.status}
                     </span>
@@ -414,8 +712,8 @@ export default function IncidentsClient({ initialIncidents }: IncidentsClientPro
         )}
       </div>
 
-      {/* モーダル */}
       {showModal && <ReportModal onClose={() => setShowModal(false)} onSubmit={handleReport} />}
+      {selectedIncidentId && <DetailPanel incidentId={selectedIncidentId} onClose={() => { setSelectedIncidentId(null); fetchIncidents(); }} />}
     </div>
   );
 }

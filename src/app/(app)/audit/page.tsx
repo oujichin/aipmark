@@ -10,7 +10,7 @@ export default async function AuditPage() {
 
   const orgId = session.user.organizationId;
 
-  const [plansResult, correctivesResult] = await Promise.all([
+  const [plansResult, correctivesResult, departmentsResult, usersResult] = await Promise.all([
     prisma.auditPlan.findMany({
       where: { organizationId: orgId },
       include: {
@@ -41,6 +41,16 @@ export default async function AuditPage() {
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    prisma.department.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, name: true, departmentId: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   // Date -> string にシリアライズ（クライアントコンポーネントに渡すため）
@@ -51,6 +61,8 @@ export default async function AuditPage() {
     <AuditClient
       initialPlans={initialPlans}
       initialCorrectives={initialCorrectives}
+      departments={departmentsResult}
+      users={usersResult}
     />
   );
 }

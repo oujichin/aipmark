@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -111,14 +112,22 @@ function SeverityBadge({ severity }: { severity: string }) {
 
 // ─── Props ────────────────────────────────────────────────────────────
 
+interface UserWithDept {
+  id: string;
+  name: string;
+  departmentId: string | null;
+}
+
 interface AuditClientProps {
   initialPlans: AuditPlan[];
   initialCorrectives: CorrectiveAction[];
+  departments: Department[];
+  users: UserWithDept[];
 }
 
 // ─── Main Component ──────────────────────────────────────────────────
 
-export default function AuditClient({ initialPlans, initialCorrectives }: AuditClientProps) {
+export default function AuditClient({ initialPlans, initialCorrectives, departments, users }: AuditClientProps) {
   const [plans, setPlans] = useState<AuditPlan[]>(initialPlans);
   const [correctives, setCorrectives] = useState<CorrectiveAction[]>(initialCorrectives);
   const [loading, setLoading] = useState(false);
@@ -147,11 +156,14 @@ export default function AuditClient({ initialPlans, initialCorrectives }: AuditC
     }
   }, [correctiveFilter]);
 
-  // フィルタ変更時のみrefetch（初回はサーバーデータを使用）
+  // フィルタ変更時にrefetch（初回はサーバーデータを使用）
+  const isInitialMount = useRef(true);
   useEffect(() => {
-    if (correctiveFilter !== "") {
-      fetchData();
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
     }
+    fetchData();
   }, [correctiveFilter, fetchData]);
 
   // Extract findings from plans data (no extra API calls needed)
@@ -215,12 +227,12 @@ export default function AuditClient({ initialPlans, initialCorrectives }: AuditC
                   {plans.map((plan) => {
                     const badge = STATUS_BADGES[plan.status] ?? STATUS_BADGES.DRAFT;
                     return (
-                      <div key={plan.id} className="grid grid-cols-4 gap-4 px-4 py-3 text-sm hover:bg-slate-50 transition-colors">
-                        <div className="font-medium text-slate-800 truncate">{plan.title}</div>
+                      <Link key={plan.id} href={`/audit/${plan.id}`} className="grid grid-cols-4 gap-4 px-4 py-3 text-sm hover:bg-slate-50 transition-colors">
+                        <div className="font-medium text-blue-700 hover:text-blue-900 truncate">{plan.title}</div>
                         <div className="text-slate-600">{plan.fiscalYear}</div>
                         <div className="text-slate-600">{plan._count.findings}</div>
                         <div><Badge label={badge.label} cls={badge.cls} /></div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>
@@ -303,6 +315,8 @@ export default function AuditClient({ initialPlans, initialCorrectives }: AuditC
             setShowCreateModal(false);
             fetchData();
           }}
+          departments={departments}
+          users={users}
         />
       )}
     </div>
@@ -332,31 +346,20 @@ function SummaryCard({ label, value, color }: { label: string; value: string | n
 interface CreatePlanModalProps {
   onClose: () => void;
   onCreated: () => void;
+  departments: Department[];
+  users: UserWithDept[];
 }
 
-function CreatePlanModal({ onClose, onCreated }: CreatePlanModalProps) {
+function CreatePlanModal({ onClose, onCreated, departments, users }: CreatePlanModalProps) {
   const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
+  const [criteria, setCriteria] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
   const [targetDeptIds, setTargetDeptIds] = useState<string[]>([]);
   const [auditorIds, setAuditorIds] = useState<string[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [users, setUsers] = useState<UserRef[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    // Fetch departments and users for selection
-    Promise.all([
-      fetch("/api/departments").then((r) => (r.ok ? r.json() : [])),
-      fetch("/api/users").then((r) => (r.ok ? r.json() : [])),
-    ]).then(([depts, usrs]) => {
-      setDepartments(Array.isArray(depts) ? depts : depts.items ?? []);
-      setUsers(Array.isArray(usrs) ? usrs : usrs.items ?? []);
-    }).catch(() => {
-      // API may not exist yet
-    });
-  }, []);
 
   const toggleDept = (id: string) => {
     setTargetDeptIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
@@ -382,6 +385,8 @@ function CreatePlanModal({ onClose, onCreated }: CreatePlanModalProps) {
           fiscalYear,
           title: title.trim(),
           scope: scope.trim() || undefined,
+          criteria: criteria.trim() || undefined,
+          scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : undefined,
           targetDeptIds: targetDeptIds.length > 0 ? targetDeptIds : undefined,
           auditorIds: auditorIds.length > 0 ? auditorIds : undefined,
         }),
@@ -443,6 +448,28 @@ function CreatePlanModal({ onClose, onCreated }: CreatePlanModalProps) {
               rows={2}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">実施予定日</label>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">監査基準</label>
+              <input
+                type="text"
+                value={criteria}
+                onChange={(e) => setCriteria(e.target.value)}
+                placeholder="例: JIS Q 15001:2023"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
 
           {departments.length > 0 && (

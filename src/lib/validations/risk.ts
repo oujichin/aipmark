@@ -48,6 +48,13 @@ export const createControlMeasureSchema = z.object({
   status: z.enum(["PLANNED", "IMPLEMENTED", "VERIFIED"]).optional(),
 });
 
+export const updateControlMeasureSchema = z.object({
+  category: z.enum(["ORGANIZATIONAL", "HUMAN", "PHYSICAL", "TECHNICAL"]).optional(),
+  description: z.string().min(1).max(2000).optional(),
+  responsible: z.string().max(200).nullable().optional(),
+  status: z.enum(["PLANNED", "IMPLEMENTED", "VERIFIED"]).optional(),
+});
+
 export const createResidualRiskSchema = z.object({
   likelihood: z.number().int().min(1).max(3).optional(),
   impact: z.number().int().min(1).max(3).optional(),

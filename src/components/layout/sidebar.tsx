@@ -22,6 +22,7 @@ const navItems = [
     href: "/register",
     icon: "📋",
     children: [
+      { label: "事前調査", href: "/register/research" },
       { label: "業務プロセス", href: "/register/processes" },
       { label: "ヒアリング", href: "/register/hearing" },
       { label: "台帳一覧", href: "/register/items" },

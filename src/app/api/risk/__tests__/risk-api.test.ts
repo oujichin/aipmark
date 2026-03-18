@@ -15,6 +15,11 @@ import { POST as createItem } from "../assessments/[id]/items/route";
 import { PUT as updateItem } from "../items/[id]/route";
 import { POST as createMeasure } from "../items/[id]/measures/route";
 import {
+  GET as getMeasure,
+  PUT as updateMeasure,
+  DELETE as deleteMeasure,
+} from "../measures/[id]/route";
+import {
   POST as createResidual,
   PUT as updateResidual,
 } from "../items/[id]/residual/route";
@@ -119,6 +124,7 @@ describe("Risk Management API", () => {
   // Track created IDs for chained tests
   let assessmentId: string;
   let riskItemId: string;
+  let measureId: string;
 
   describe("RBAC — DEPT_STAFFはリスク評価を作成できない", () => {
     it("DEPT_STAFFがPOSTすると403を返す", async () => {
@@ -337,6 +343,7 @@ describe("Risk Management API", () => {
       expect(data.category).toBe("TECHNICAL");
       expect(data.description).toBe("WAFの導入");
       expect(data.status).toBe("PLANNED");
+      measureId = data.id;
     });
 
     it("categoryが未指定の場合400を返す", async () => {
@@ -349,6 +356,160 @@ describe("Risk Management API", () => {
       const params = Promise.resolve({ id: riskItemId });
       const res = await createMeasure(req, { params });
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /api/risk/measures/[id] — 管理策詳細取得", () => {
+    it("正常に管理策を取得できる", async () => {
+      const req = makeRequest(`/api/risk/measures/${measureId}`);
+      const params = Promise.resolve({ id: measureId });
+      const res = await getMeasure(req, { params });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.id).toBe(measureId);
+      expect(data.category).toBe("TECHNICAL");
+      expect(data.description).toBe("WAFの導入");
+    });
+
+    it("存在しないIDの場合404を返す", async () => {
+      const req = makeRequest("/api/risk/measures/nonexistent-id");
+      const params = Promise.resolve({ id: "nonexistent-id" });
+      const res = await getMeasure(req, { params });
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("PUT /api/risk/measures/[id] — 管理策更新", () => {
+    it("ステータスを更新できる", async () => {
+      const req = makeRequest(`/api/risk/measures/${measureId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "IMPLEMENTED" }),
+      });
+      const params = Promise.resolve({ id: measureId });
+      const res = await updateMeasure(req, { params });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe("IMPLEMENTED");
+    });
+
+    it("descriptionとresponsibleを更新できる", async () => {
+      const req = makeRequest(`/api/risk/measures/${measureId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          description: "WAF + IPSの導入",
+          responsible: "セキュリティ推進室",
+        }),
+      });
+      const params = Promise.resolve({ id: measureId });
+      const res = await updateMeasure(req, { params });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.description).toBe("WAF + IPSの導入");
+      expect(data.responsible).toBe("セキュリティ推進室");
+    });
+
+    it("implementedAtがIMPLEMENTED時に自動設定される", async () => {
+      // まずPLANNEDに戻す
+      const req1 = makeRequest(`/api/risk/measures/${measureId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "PLANNED" }),
+      });
+      await updateMeasure(req1, { params: Promise.resolve({ id: measureId }) });
+
+      // IMPLEMENTEDに変更
+      const req2 = makeRequest(`/api/risk/measures/${measureId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "IMPLEMENTED" }),
+      });
+      const res = await updateMeasure(req2, { params: Promise.resolve({ id: measureId }) });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.implementedAt).not.toBeNull();
+    });
+
+    it("存在しないIDの場合404を返す", async () => {
+      const req = makeRequest("/api/risk/measures/nonexistent-id", {
+        method: "PUT",
+        body: JSON.stringify({ status: "IMPLEMENTED" }),
+      });
+      const params = Promise.resolve({ id: "nonexistent-id" });
+      const res = await updateMeasure(req, { params });
+      expect(res.status).toBe(404);
+    });
+
+    it("未認証の場合401を返す", async () => {
+      (getServerSession as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      const req = makeRequest(`/api/risk/measures/${measureId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "IMPLEMENTED" }),
+      });
+      const params = Promise.resolve({ id: measureId });
+      const res = await updateMeasure(req, { params });
+      expect(res.status).toBe(401);
+    });
+
+    it("他テナントの管理策は更新できない（403）", async () => {
+      (getServerSession as ReturnType<typeof vi.fn>).mockResolvedValue({
+        user: {
+          id: "other-user",
+          organizationId: "other-org-id",
+          role: "PRIVACY_OFFICER",
+        },
+      });
+      const req = makeRequest(`/api/risk/measures/${measureId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "IMPLEMENTED" }),
+      });
+      const params = Promise.resolve({ id: measureId });
+      const res = await updateMeasure(req, { params });
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("DELETE /api/risk/measures/[id] — 管理策削除", () => {
+    let deletableMeasureId: string;
+
+    it("削除用の管理策を作成する", async () => {
+      mockSession();
+      const req = makeRequest(`/api/risk/items/${riskItemId}/measures`, {
+        method: "POST",
+        body: JSON.stringify({
+          category: "HUMAN",
+          description: "削除テスト用管理策",
+        }),
+      });
+      const params = Promise.resolve({ id: riskItemId });
+      const res = await createMeasure(req, { params });
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      deletableMeasureId = data.id;
+    });
+
+    it("正常に管理策を削除できる", async () => {
+      const req = makeRequest(`/api/risk/measures/${deletableMeasureId}`, {
+        method: "DELETE",
+      });
+      const params = Promise.resolve({ id: deletableMeasureId });
+      const res = await deleteMeasure(req, { params });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+    });
+
+    it("削除後に取得すると404を返す", async () => {
+      const req = makeRequest(`/api/risk/measures/${deletableMeasureId}`);
+      const params = Promise.resolve({ id: deletableMeasureId });
+      const res = await getMeasure(req, { params });
+      expect(res.status).toBe(404);
+    });
+
+    it("存在しないIDの場合404を返す", async () => {
+      const req = makeRequest("/api/risk/measures/nonexistent-id", {
+        method: "DELETE",
+      });
+      const params = Promise.resolve({ id: "nonexistent-id" });
+      const res = await deleteMeasure(req, { params });
+      expect(res.status).toBe(404);
     });
   });
 

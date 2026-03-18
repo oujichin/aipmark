@@ -158,4 +158,5 @@ export const updateResearchProfileSchema = z.object({
   aiSummary: z.string().max(10000).nullable().optional(),
   status: z.string().max(50).optional(),
   hypotheses: z.array(interviewHypothesisSchema).optional(),
+  newSources: z.array(researchSourceSchema).optional(),
 });

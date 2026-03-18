@@ -63,15 +63,309 @@ const VERSION_STATUS: Record<string, { label: string; color: string }> = {
   SUPERSEDED: { label: "旧版", color: "bg-amber-100 text-amber-600" },
 };
 
+// ── エビデンス型 ─────────────────────────────────────────
+
+interface EvidenceRecord {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  filePath: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  mimeType: string | null;
+  evidenceDate: string | null;
+  retentionUntil: string | null;
+  uploadedById: string | null;
+  uploadedBy?: { id: string; name: string } | null;
+  registerItemId: string | null;
+  riskItemId: string | null;
+  vendorId: string | null;
+  incidentId: string | null;
+  auditFindingId: string | null;
+  correctiveActionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const EVIDENCE_TYPES: Record<string, { label: string; color: string }> = {
+  TRAINING_RECORD: { label: "教育記録", color: "bg-blue-100 text-blue-700" },
+  AUDIT_RECORD: { label: "監査記録", color: "bg-purple-100 text-purple-700" },
+  INCIDENT_RECORD: { label: "事故記録", color: "bg-red-100 text-red-700" },
+  VENDOR_RECORD: { label: "委託先記録", color: "bg-green-100 text-green-700" },
+  REVIEW_RECORD: { label: "レビュー記録", color: "bg-indigo-100 text-indigo-700" },
+  CONTRACT: { label: "契約書", color: "bg-amber-100 text-amber-700" },
+  CONSENT: { label: "同意書", color: "bg-teal-100 text-teal-700" },
+  OTHER: { label: "その他", color: "bg-slate-100 text-slate-600" },
+};
+
 // ── Props ───────────────────────────────────────────────
 
 interface DocumentsClientProps {
   initialDocuments: PMSDocument[];
 }
 
+// ── エビデンス管理パネル ──────────────────────────────────
+
+function EvidencePanel() {
+  const [evidences, setEvidences] = useState<EvidenceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceRecord | null>(null);
+  const [error, setError] = useState("");
+
+  const [createForm, setCreateForm] = useState({
+    title: "", type: "OTHER", description: "", fileName: "", filePath: "", fileSize: "",
+    evidenceDate: "", retentionUntil: "",
+    registerItemId: "", riskItemId: "", vendorId: "", incidentId: "", auditFindingId: "", correctiveActionId: "",
+  });
+
+  const fetchEvidences = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterType) params.set("type", filterType);
+    const res = await fetch(`/api/evidence?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      setEvidences(Array.isArray(data) ? data : data.items ?? []);
+    }
+    setLoading(false);
+  }, [filterType]);
+
+  useEffect(() => { fetchEvidences(); }, [fetchEvidences]);
+
+  const handleCreate = async () => {
+    setError("");
+    const body: Record<string, unknown> = {
+      title: createForm.title,
+      type: createForm.type,
+    };
+    if (createForm.description) body.description = createForm.description;
+    if (createForm.fileName) body.fileName = createForm.fileName;
+    if (createForm.filePath) body.filePath = createForm.filePath;
+    if (createForm.fileSize) body.fileSize = parseInt(createForm.fileSize, 10);
+    if (createForm.evidenceDate) body.evidenceDate = new Date(createForm.evidenceDate).toISOString();
+    if (createForm.retentionUntil) body.retentionUntil = new Date(createForm.retentionUntil).toISOString();
+    if (createForm.registerItemId) body.registerItemId = createForm.registerItemId;
+    if (createForm.riskItemId) body.riskItemId = createForm.riskItemId;
+    if (createForm.vendorId) body.vendorId = createForm.vendorId;
+    if (createForm.incidentId) body.incidentId = createForm.incidentId;
+    if (createForm.auditFindingId) body.auditFindingId = createForm.auditFindingId;
+    if (createForm.correctiveActionId) body.correctiveActionId = createForm.correctiveActionId;
+
+    const res = await fetch("/api/evidence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      setShowCreateModal(false);
+      setCreateForm({ title: "", type: "OTHER", description: "", fileName: "", filePath: "", fileSize: "",
+        evidenceDate: "", retentionUntil: "", registerItemId: "", riskItemId: "", vendorId: "",
+        incidentId: "", auditFindingId: "", correctiveActionId: "" });
+      fetchEvidences();
+    } else {
+      const data = await res.json();
+      setError(data.error || "登録に失敗しました");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("このエビデンスを削除しますか？")) return;
+    await fetch(`/api/evidence/${id}`, { method: "DELETE" });
+    setSelectedEvidence(null);
+    fetchEvidences();
+  };
+
+  const isRetentionExpired = (d: string | null) => {
+    if (!d) return false;
+    return new Date(d).getTime() < Date.now();
+  };
+
+  return (
+    <div>
+      {/* フィルタ */}
+      <div className="flex gap-3 mb-4">
+        <select className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white" value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}>
+          <option value="">全種別</option>
+          {Object.entries(EVIDENCE_TYPES).map(([k, v]) => (<option key={k} value={k}>{v.label}</option>))}
+        </select>
+        <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 ml-auto">
+          + エビデンス登録
+        </button>
+      </div>
+
+      {/* 一覧 */}
+      {loading ? (
+        <div className="text-center py-12 text-sm text-slate-400">読み込み中...</div>
+      ) : evidences.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200">
+          <EmptyState icon="📎" title="エビデンスがありません" description="「+ エビデンス登録」からPMS運用の証跡を登録してください。" />
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">タイトル</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">種別</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">紐付け先</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">証跡日</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">登録者</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">登録日</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">保管期限</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evidences.map((ev) => {
+                const et = EVIDENCE_TYPES[ev.type] ?? EVIDENCE_TYPES.OTHER;
+                return (
+                  <tr key={ev.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-slate-800">{ev.title}</td>
+                    <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${et.color}`}>{et.label}</span></td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {ev.vendorId ? "委託先" : ev.incidentId ? "インシデント" : ev.riskItemId ? "リスク" : ev.registerItemId ? "台帳" : ev.auditFindingId ? "監査指摘" : ev.correctiveActionId ? "是正処置" : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{ev.evidenceDate ? new Date(ev.evidenceDate).toLocaleDateString("ja-JP") : "-"}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{ev.uploadedBy?.name ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(ev.createdAt).toLocaleDateString("ja-JP")}</td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className={isRetentionExpired(ev.retentionUntil) ? "text-red-600 font-medium" : "text-slate-500"}>
+                        {ev.retentionUntil ? new Date(ev.retentionUntil).toLocaleDateString("ja-JP") : "-"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 flex gap-2">
+                      <button onClick={() => setSelectedEvidence(ev)} className="text-xs text-blue-600 hover:underline">詳細</button>
+                      <button onClick={() => handleDelete(ev.id)} className="text-xs text-red-600 hover:underline">削除</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 詳細モーダル */}
+      {selectedEvidence && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setSelectedEvidence(null)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-900">{selectedEvidence.title}</h2>
+              <button onClick={() => setSelectedEvidence(null)} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-xs text-slate-500">種別</span><div>{EVIDENCE_TYPES[selectedEvidence.type]?.label ?? selectedEvidence.type}</div></div>
+              <div><span className="text-xs text-slate-500">ファイル名</span><div>{selectedEvidence.fileName || "-"}</div></div>
+              <div><span className="text-xs text-slate-500">ファイルサイズ</span><div>{selectedEvidence.fileSize ? `${(selectedEvidence.fileSize / 1024).toFixed(1)} KB` : "-"}</div></div>
+              <div><span className="text-xs text-slate-500">証跡日</span><div>{selectedEvidence.evidenceDate ? new Date(selectedEvidence.evidenceDate).toLocaleDateString("ja-JP") : "-"}</div></div>
+              <div><span className="text-xs text-slate-500">保管期限</span><div>{selectedEvidence.retentionUntil ? new Date(selectedEvidence.retentionUntil).toLocaleDateString("ja-JP") : "-"}</div></div>
+              <div><span className="text-xs text-slate-500">登録者</span><div>{selectedEvidence.uploadedBy?.name ?? "-"}</div></div>
+            </div>
+            {selectedEvidence.description && (
+              <div className="mt-3"><span className="text-xs text-slate-500">説明</span><p className="text-sm text-slate-700 mt-1">{selectedEvidence.description}</p></div>
+            )}
+            <div className="mt-3 text-xs text-slate-400 space-y-0.5">
+              {selectedEvidence.registerItemId && <div>台帳ID: {selectedEvidence.registerItemId}</div>}
+              {selectedEvidence.riskItemId && <div>リスクID: {selectedEvidence.riskItemId}</div>}
+              {selectedEvidence.vendorId && <div>委託先ID: {selectedEvidence.vendorId}</div>}
+              {selectedEvidence.incidentId && <div>インシデントID: {selectedEvidence.incidentId}</div>}
+              {selectedEvidence.auditFindingId && <div>監査指摘ID: {selectedEvidence.auditFindingId}</div>}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => handleDelete(selectedEvidence.id)} className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg">削除</button>
+              <button onClick={() => setSelectedEvidence(null)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">閉じる</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 登録モーダル */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowCreateModal(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">エビデンス登録</h2>
+            {error && <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">タイトル *</label>
+                <input type="text" value={createForm.title} onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="エビデンスのタイトル" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">種別</label>
+                <select value={createForm.type} onChange={(e) => setCreateForm({ ...createForm, type: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                  {Object.entries(EVIDENCE_TYPES).map(([k, v]) => (<option key={k} value={k}>{v.label}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">説明</label>
+                <textarea value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" rows={2} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">ファイル名</label>
+                  <input type="text" value={createForm.fileName} onChange={(e) => setCreateForm({ ...createForm, fileName: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">ファイルサイズ(bytes)</label>
+                  <input type="number" value={createForm.fileSize} onChange={(e) => setCreateForm({ ...createForm, fileSize: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">証跡日</label>
+                  <input type="date" value={createForm.evidenceDate} onChange={(e) => setCreateForm({ ...createForm, evidenceDate: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">保管期限</label>
+                  <input type="date" value={createForm.retentionUntil} onChange={(e) => setCreateForm({ ...createForm, retentionUntil: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs text-slate-500 mb-2">紐付け先 (任意)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={createForm.registerItemId} onChange={(e) => setCreateForm({ ...createForm, registerItemId: e.target.value })}
+                    className="border border-slate-200 rounded px-2 py-1 text-xs" placeholder="台帳ID" />
+                  <input type="text" value={createForm.vendorId} onChange={(e) => setCreateForm({ ...createForm, vendorId: e.target.value })}
+                    className="border border-slate-200 rounded px-2 py-1 text-xs" placeholder="委託先ID" />
+                  <input type="text" value={createForm.incidentId} onChange={(e) => setCreateForm({ ...createForm, incidentId: e.target.value })}
+                    className="border border-slate-200 rounded px-2 py-1 text-xs" placeholder="インシデントID" />
+                  <input type="text" value={createForm.riskItemId} onChange={(e) => setCreateForm({ ...createForm, riskItemId: e.target.value })}
+                    className="border border-slate-200 rounded px-2 py-1 text-xs" placeholder="リスクID" />
+                  <input type="text" value={createForm.auditFindingId} onChange={(e) => setCreateForm({ ...createForm, auditFindingId: e.target.value })}
+                    className="border border-slate-200 rounded px-2 py-1 text-xs" placeholder="監査指摘ID" />
+                  <input type="text" value={createForm.correctiveActionId} onChange={(e) => setCreateForm({ ...createForm, correctiveActionId: e.target.value })}
+                    className="border border-slate-200 rounded px-2 py-1 text-xs" placeholder="是正処置ID" />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">キャンセル</button>
+              <button onClick={handleCreate} disabled={!createForm.title} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">登録</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── メインコンポーネント ──────────────────────────────────
 
 export default function DocumentsClient({ initialDocuments }: DocumentsClientProps) {
+  const [activeTab, setActiveTab] = useState<"documents" | "evidence">("documents");
   const [documents, setDocuments] = useState<PMSDocument[]>(initialDocuments);
   const [loading, setLoading] = useState(false);
   const [filterType, setFilterType] = useState("");
@@ -212,15 +506,33 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
         title="文書・エビデンス管理"
         description="PMS関連文書・証跡ファイルを一元管理します。"
         actions={
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-            onClick={() => setShowCreateModal(true)}
-          >
-            + 文書を追加
-          </button>
+          activeTab === "documents" ? (
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={() => setShowCreateModal(true)}
+            >
+              + 文書を追加
+            </button>
+          ) : undefined
         }
       />
 
+      {/* タブ切り替え */}
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setActiveTab("documents")}
+          className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${activeTab === "documents" ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
+          文書管理
+        </button>
+        <button onClick={() => setActiveTab("evidence")}
+          className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors ${activeTab === "evidence" ? "bg-blue-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>
+          エビデンス管理
+        </button>
+      </div>
+
+      {activeTab === "evidence" ? (
+        <EvidencePanel />
+      ) : (
+      <>
       {/* フィルタ */}
       <div className="flex gap-3 mb-4">
         <select
@@ -533,6 +845,8 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

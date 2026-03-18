@@ -456,47 +456,130 @@ function PlanDetailPanel({
 // Session Detail Modal
 // =========================================================
 function SessionDetailModal({
-  session,
+  session: initialSession,
   onClose,
 }: {
   session: TrainingSession;
   onClose: () => void;
 }) {
+  const [session, setSession] = useState(initialSession);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [editingResult, setEditingResult] = useState<TrainingResult | null>(null);
+
   const results = session.results ?? [];
   const quizQuestions = session.quizQuestions ?? [];
 
+  const attendedCount = results.filter((r) => r.attended).length;
+  const attendanceRate = results.length > 0 ? Math.round((attendedCount / results.length) * 100) : 0;
+  const testedCount = results.filter((r) => r.quizScore !== null).length;
+  const passedCount = results.filter((r) => r.passed).length;
+  const passRate = testedCount > 0 ? Math.round((passedCount / testedCount) * 100) : 0;
+
+  const refreshSession = async () => {
+    const res = await fetch(`/api/training/sessions/${session.id}`);
+    if (res.ok) {
+      const data = await res.json();
+      setSession(data);
+    }
+  };
+
+  // 受講結果追加
+  const handleAddResult = async (form: { userId: string; attended: boolean; quizScore: string; quizMaxScore: string; passed: boolean }) => {
+    const resultItem: Record<string, unknown> = {
+      userId: form.userId,
+      attended: form.attended,
+      passed: form.passed,
+    };
+    if (form.quizScore !== "") resultItem.quizScore = parseInt(form.quizScore, 10);
+    if (form.quizMaxScore !== "") resultItem.quizMaxScore = parseInt(form.quizMaxScore, 10);
+
+    const res = await fetch(`/api/training/sessions/${session.id}/results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ results: [resultItem] }),
+    });
+    if (res.ok) {
+      setShowResultModal(false);
+      refreshSession();
+    }
+  };
+
+  // 受講結果更新
+  const handleUpdateResult = async (resultId: string, form: { attended: boolean; quizScore: string; quizMaxScore: string; passed: boolean }) => {
+    const body: Record<string, unknown> = {
+      attended: form.attended,
+      passed: form.passed,
+    };
+    if (form.quizScore !== "") {
+      body.quizScore = parseInt(form.quizScore, 10);
+    } else {
+      body.quizScore = null;
+    }
+    if (form.quizMaxScore !== "") {
+      body.quizMaxScore = parseInt(form.quizMaxScore, 10);
+    } else {
+      body.quizMaxScore = null;
+    }
+
+    await fetch(`/api/training/results/${resultId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setEditingResult(null);
+    refreshSession();
+  };
+
+  // クイズ追加
+  const handleAddQuiz = async (form: { questionText: string; questionType: string; options: string; correctAnswer: string; points: number; sortOrder: number }) => {
+    await fetch(`/api/training/sessions/${session.id}/quiz`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setShowQuizModal(false);
+    refreshSession();
+  };
+
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-[700px] max-h-[80vh] overflow-y-auto p-6">
+      <div className="bg-white rounded-xl shadow-xl w-[750px] max-h-[85vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-900">{session.title}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
-          <div>
-            <div className="text-xs text-slate-500">日時</div>
-            <div>{session.sessionDate ? new Date(session.sessionDate).toLocaleDateString("ja-JP") : "未定"}</div>
+        <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+          <div><div className="text-xs text-slate-500">日時</div><div>{session.sessionDate ? new Date(session.sessionDate).toLocaleDateString("ja-JP") : "未定"}</div></div>
+          <div><div className="text-xs text-slate-500">場所</div><div>{session.location || "未定"}</div></div>
+          <div><div className="text-xs text-slate-500">講師</div><div>{session.facilitator || "未定"}</div></div>
+        </div>
+
+        {/* 集計 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-blue-50 rounded-lg p-2">
+            <div className="text-xs text-blue-600">受講率</div>
+            <div className="text-lg font-bold text-blue-800">{attendanceRate}% <span className="text-xs font-normal">({attendedCount}/{results.length})</span></div>
           </div>
-          <div>
-            <div className="text-xs text-slate-500">場所</div>
-            <div>{session.location || "未定"}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">講師</div>
-            <div>{session.facilitator || "未定"}</div>
+          <div className="bg-green-50 rounded-lg p-2">
+            <div className="text-xs text-green-600">合格率</div>
+            <div className="text-lg font-bold text-green-800">{passRate}% <span className="text-xs font-normal">({passedCount}/{testedCount})</span></div>
           </div>
         </div>
 
         {session.materialNote && (
-          <div className="mb-6">
+          <div className="mb-4">
             <div className="text-xs text-slate-500 mb-1">教材・ノート</div>
             <div className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{session.materialNote}</div>
           </div>
         )}
 
-        {/* Results Table */}
-        <h3 className="text-sm font-bold text-slate-700 mb-2">受講状況 ({results.length}名)</h3>
+        {/* 受講状況 */}
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-slate-700">受講状況 ({results.length}名)</h3>
+          <button onClick={() => setShowResultModal(true)} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ 受講結果追加</button>
+        </div>
         {results.length === 0 ? (
           <div className="text-sm text-slate-400 text-center py-4">受講記録がありません</div>
         ) : (
@@ -508,6 +591,7 @@ function SessionDetailModal({
                   <th className="text-center px-3 py-2 text-xs text-slate-500 font-medium">出席</th>
                   <th className="text-center px-3 py-2 text-xs text-slate-500 font-medium">テスト</th>
                   <th className="text-center px-3 py-2 text-xs text-slate-500 font-medium">合否</th>
+                  <th className="text-center px-3 py-2 text-xs text-slate-500 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -515,11 +599,7 @@ function SessionDetailModal({
                   <tr key={r.id} className="border-t border-slate-100">
                     <td className="px-3 py-2">{r.user.name}</td>
                     <td className="text-center px-3 py-2">
-                      {r.attended ? (
-                        <span className="text-green-600 font-medium">出席</span>
-                      ) : (
-                        <span className="text-slate-400">未出席</span>
-                      )}
+                      {r.attended ? <span className="text-green-600 font-medium">出席</span> : <span className="text-slate-400">未出席</span>}
                     </td>
                     <td className="text-center px-3 py-2">
                       {r.quizScore !== null ? `${r.quizScore}/${r.quizMaxScore ?? "?"}` : "---"}
@@ -529,6 +609,9 @@ function SessionDetailModal({
                       {r.passed === false && <span className="text-red-600 font-medium">不合格</span>}
                       {r.passed === null && <span className="text-slate-400">---</span>}
                     </td>
+                    <td className="text-center px-3 py-2">
+                      <button onClick={() => setEditingResult(r)} className="text-xs text-blue-600 hover:underline">編集</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -536,20 +619,180 @@ function SessionDetailModal({
           </div>
         )}
 
-        {/* Quiz Questions */}
-        {quizQuestions.length > 0 && (
-          <>
-            <h3 className="text-sm font-bold text-slate-700 mb-2">クイズ問題 ({quizQuestions.length}問)</h3>
-            <div className="space-y-2">
-              {quizQuestions.map((q, i) => (
-                <div key={q.id} className="bg-slate-50 rounded-lg p-3">
-                  <div className="text-sm font-medium text-slate-800 mb-1">Q{i + 1}. {q.questionText}</div>
-                  <div className="text-xs text-slate-500">配点: {q.points}点 / タイプ: {q.questionType}</div>
-                </div>
-              ))}
-            </div>
-          </>
+        {/* クイズ問題 */}
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-bold text-slate-700">クイズ問題 ({quizQuestions.length}問)</h3>
+          <button onClick={() => setShowQuizModal(true)} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700">+ クイズ追加</button>
+        </div>
+        {quizQuestions.length === 0 ? (
+          <div className="text-sm text-slate-400 text-center py-4">クイズ問題がありません</div>
+        ) : (
+          <div className="space-y-2">
+            {quizQuestions.map((q, i) => (
+              <div key={q.id} className="bg-slate-50 rounded-lg p-3">
+                <div className="text-sm font-medium text-slate-800 mb-1">Q{i + 1}. {q.questionText}</div>
+                <div className="text-xs text-slate-500">配点: {q.points}点 / タイプ: {q.questionType}</div>
+              </div>
+            ))}
+          </div>
         )}
+      </div>
+
+      {/* 受講結果追加モーダル */}
+      {showResultModal && (
+        <ResultFormModal onClose={() => setShowResultModal(false)} onSubmit={handleAddResult} />
+      )}
+
+      {/* 受講結果編集モーダル */}
+      {editingResult && (
+        <ResultFormModal
+          initial={editingResult}
+          onClose={() => setEditingResult(null)}
+          onSubmit={(form) => handleUpdateResult(editingResult.id, form)}
+        />
+      )}
+
+      {/* クイズ追加モーダル */}
+      {showQuizModal && (
+        <QuizFormModal onClose={() => setShowQuizModal(false)} onSubmit={handleAddQuiz} />
+      )}
+    </div>
+  );
+}
+
+// =========================================================
+// 受講結果フォームモーダル
+// =========================================================
+function ResultFormModal({
+  initial,
+  onClose,
+  onSubmit,
+}: {
+  initial?: TrainingResult;
+  onClose: () => void;
+  onSubmit: (form: { userId: string; attended: boolean; quizScore: string; quizMaxScore: string; passed: boolean }) => void;
+}) {
+  const [userId, setUserId] = useState(initial?.userId ?? "");
+  const [attended, setAttended] = useState(initial?.attended ?? false);
+  const [quizScore, setQuizScore] = useState(initial?.quizScore?.toString() ?? "");
+  const [quizMaxScore, setQuizMaxScore] = useState(initial?.quizMaxScore?.toString() ?? "");
+  const [passed, setPassed] = useState(initial?.passed ?? false);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-[400px] p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-4">{initial ? "受講結果編集" : "受講結果追加"}</h3>
+        <div className="space-y-3">
+          {!initial && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">ユーザーID *</label>
+              <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="user-xxxxx" />
+            </div>
+          )}
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={attended} onChange={(e) => setAttended(e.target.checked)} className="rounded" />
+              出席
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={passed} onChange={(e) => setPassed(e.target.checked)} className="rounded" />
+              合格
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">テスト点数</label>
+              <input type="number" value={quizScore} onChange={(e) => setQuizScore(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">満点</label>
+              <input type="number" value={quizMaxScore} onChange={(e) => setQuizMaxScore(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+          <button onClick={() => onSubmit({ userId, attended, quizScore, quizMaxScore, passed })}
+            disabled={!initial && !userId}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+            {initial ? "更新" : "追加"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// クイズ追加モーダル
+// =========================================================
+function QuizFormModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (form: { questionText: string; questionType: string; options: string; correctAnswer: string; points: number; sortOrder: number }) => void;
+}) {
+  const [questionText, setQuestionText] = useState("");
+  const [questionType, setQuestionType] = useState("SINGLE_CHOICE");
+  const [options, setOptions] = useState('["選択肢A", "選択肢B", "選択肢C"]');
+  const [correctAnswer, setCorrectAnswer] = useState("");
+  const [points, setPoints] = useState(1);
+  const [sortOrder, setSortOrder] = useState(0);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-[500px] p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-4">クイズ問題追加</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">問題文 *</label>
+            <textarea value={questionText} onChange={(e) => setQuestionText(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" rows={3} placeholder="問題文を入力" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">問題形式</label>
+              <select value={questionType} onChange={(e) => setQuestionType(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                <option value="SINGLE_CHOICE">単一選択</option>
+                <option value="MULTI_CHOICE">複数選択</option>
+                <option value="TRUE_FALSE">正誤</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">配点</label>
+              <input type="number" value={points} onChange={(e) => setPoints(parseInt(e.target.value, 10) || 1)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" min={1} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">選択肢 (JSON配列)</label>
+            <textarea value={options} onChange={(e) => setOptions(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono" rows={2} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">正答</label>
+              <input type="text" value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="正解の選択肢" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">表示順</label>
+              <input type="number" value={sortOrder} onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+          <button onClick={() => onSubmit({ questionText, questionType, options, correctAnswer, points, sortOrder })}
+            disabled={!questionText}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">追加</button>
+        </div>
       </div>
     </div>
   );
