@@ -1,551 +1,337 @@
-import { getServerSession } from "next-auth";
-import { authOptions, ROLE_LABELS } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import Link from "next/link";
+"use client";
 
-const ACTION_LABELS: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "更新",
-  APPROVE: "承認",
-  REJECT: "差戻し",
-  REQUEST_APPROVAL: "承認申請",
-  SUBMIT: "提出",
-  AI_GENERATE: "AI生成",
-  LOCK: "ロック",
-};
+import { Suspense, useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { QuestionCard } from "@/components/question-card";
+import { StatusBadge } from "@/components/status-badge";
 
-const ENTITY_LABELS: Record<string, string> = {
-  RegisterItem: "台帳",
-  BusinessProcess: "業務プロセス",
-  Hearing: "ヒアリング",
-};
-
-const APPLICATION_STATUS_LABELS: Record<string, string> = {
-  DRAFT: "下書き",
-  GENERATING: "生成中",
-  READY: "準備完了",
-  REVIEWING: "レビュー中",
-  APPROVED: "承認済",
-  SUBMITTED: "提出済",
-};
-
-function StatCard({ label, value, color, href }: { label: string; value: number | string; color: string; href?: string }) {
-  const inner = (
-    <div className={`bg-white rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors ${href ? "cursor-pointer" : ""}`}>
-      <div className="text-xs text-slate-500 mb-1">{label}</div>
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
-    </div>
-  );
-  return href ? <Link href={href}>{inner}</Link> : inner;
+interface RegistryItem {
+  id: string;
+  dataCategory: string;
+  dataSubject: string | null;
+  purpose: string | null;
+  purposeStatus: string;
+  acquisitionMethod: string | null;
+  acquisitionMethodStatus: string;
+  storageLocation: string | null;
+  storageStatus: string;
+  retentionPeriod: string | null;
+  retentionPeriodStatus: string;
+  disposalMethod: string | null;
+  disposalMethodStatus: string;
+  thirdPartyStatus: string;
 }
 
-type ModuleCardProps = {
-  title: string;
-  href: string;
-  icon: string;
-  stats: Array<{ label: string; value: number | string; status: "ok" | "warn" | "danger" | "neutral" }>;
+interface RegistryProcess {
+  id: string;
+  name: string;
+  department: string | null;
+  description: string | null;
+  items: RegistryItem[];
+}
+
+interface Risk {
+  id: string;
+  businessProcess: string;
+  threat: string;
+  vulnerability: string;
+  likelihood: string;
+  impact: string;
+  riskScore: number | null;
+  currentMeasures: string | null;
+  recommendedMeasures: string | null;
+  confidence: string;
+}
+
+interface SessionData {
+  session: {
+    id: string;
+    status: string;
+    phase: string;
+    company: { name: string; url: string | null };
+    questions: Question[];
+  };
+  stats: {
+    businessProcessCount: number;
+    completionRate: number;
+    confirmed: number;
+    estimated: number;
+    unconfirmed: number;
+    insufficientEvidence: number;
+    riskCount: number;
+    highRiskCount: number;
+    documentCount: number;
+    pendingQuestions: number;
+  };
+  registry: RegistryProcess[];
+  risks: Risk[];
+}
+
+interface Question {
+  id: string;
+  questionText: string;
+  questionType: string;
+  options: string | null;
+  priority: string;
+  context: string | null;
+  status: string;
+  answer: string | null;
+}
+
+const PHASE_LABELS: Record<string, string> = {
+  discovery: "資料読込み・Web調査中",
+  gap_analysis: "ギャップ分析・質問生成中",
+  drafting: "文書ドラフト作成中",
+  review: "レビュー完了",
 };
 
-function ModuleCard({ title, href, icon, stats }: ModuleCardProps) {
-  const statusColors = {
-    ok: "text-green-600",
-    warn: "text-amber-600",
-    danger: "text-red-600",
-    neutral: "text-slate-800",
-  };
+const STATUS_LABELS: Record<string, string> = {
+  running: "実行中",
+  idle: "待機中",
+  waiting_for_answers: "回答待ち",
+  completed: "完了",
+};
 
-  const statusDotColors = {
-    ok: "bg-green-500",
-    warn: "bg-amber-500",
-    danger: "bg-red-500",
-    neutral: "bg-slate-400",
-  };
-
-  // カード全体のステータスを最も深刻なものに合わせる
-  const worstStatus = stats.some((s) => s.status === "danger")
-    ? "danger"
-    : stats.some((s) => s.status === "warn")
-    ? "warn"
-    : stats.some((s) => s.status === "ok")
-    ? "ok"
-    : "neutral";
-
-  const borderColors = {
-    ok: "border-green-200 hover:border-green-300",
-    warn: "border-amber-200 hover:border-amber-300",
-    danger: "border-red-200 hover:border-red-300",
-    neutral: "border-slate-200 hover:border-slate-300",
-  };
-
+export default function DashboardPage() {
   return (
-    <Link href={href} className="block">
-      <div className={`bg-white rounded-xl border ${borderColors[worstStatus]} p-5 transition-colors cursor-pointer`}>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">{icon}</span>
-          <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-          <div className={`w-2 h-2 rounded-full ml-auto ${statusDotColors[worstStatus]}`} />
-        </div>
-        <div className="space-y-1.5">
-          {stats.map((stat) => (
-            <div key={stat.label} className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">{stat.label}</span>
-              <span className={`text-sm font-bold ${statusColors[stat.status]}`}>
-                {stat.value}
-              </span>
-            </div>
-          ))}
-        </div>
+    <Suspense fallback={<div className="flex items-center justify-center mt-20"><div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" /></div>}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("sessionId");
+  const [data, setData] = useState<SessionData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    if (!sessionId) return;
+    const res = await fetch(`/api/sessions/${sessionId}`);
+    const json = await res.json();
+    setData(json);
+    setLoading(false);
+  }, [sessionId]);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  if (!sessionId) {
+    return <p className="text-gray-500 text-center mt-12">セッションIDが指定されていません</p>;
+  }
+
+  if (loading || !data) {
+    return (
+      <div className="flex items-center justify-center mt-20">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
-    </Link>
-  );
-}
+    );
+  }
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) return null;
-
-  const orgId = session.user.organizationId;
-  const role = session.user.role;
-  const currentYear = new Date().getFullYear();
-  const now = new Date();
-
-  // groupByで同テーブルの複数countを集約し、クエリ数を削減
-  const [
-    registerStatusGroups,
-    recentLogs,
-    processes,
-    // リスク管理
-    riskAssessmentCount,
-    riskItemStatusGroups,
-    riskItemHigh,
-    // 文書管理 (groupBy)
-    docStatusGroups,
-    // 教育管理
-    trainingPlanCount,
-    trainingResultStatusGroups,
-    // 委託先管理
-    vendorCount,
-    vendorNeedsEval,
-    // 監査管理
-    auditPlanCount,
-    correctiveUnclosed,
-    // 事故対応 (groupBy)
-    incidentStatusGroups,
-    incidentOverdue,
-    // 申請管理
-    applicationPackageCount,
-    latestApplication,
-    // マネジメントレビュー
-    reviewCount,
-    reviewUnapproved,
-  ] = await Promise.all([
-    // 台帳: 4つのcountを1つのgroupByに集約
-    prisma.registerItem.groupBy({
-      by: ["status"],
-      where: { businessProcess: { organizationId: orgId } },
-      _count: true,
-    }),
-    prisma.auditLog.findMany({
-      take: 10,
-      orderBy: { createdAt: "desc" },
-      include: { user: true },
-    }),
-    prisma.businessProcess.findMany({
-      where: { organizationId: orgId },
-      include: { registerItems: { select: { status: true } } },
-    }),
-
-    // リスク管理
-    prisma.riskAssessment.count({ where: { organizationId: orgId } }),
-    // RiskItem: statusでgroupBy (IDENTIFIED count)
-    prisma.riskItem.groupBy({
-      by: ["status"],
-      where: { riskAssessment: { organizationId: orgId } },
-      _count: true,
-    }),
-    prisma.riskItem.count({
-      where: { riskAssessment: { organizationId: orgId }, riskValue: { gte: 6 } },
-    }),
-
-    // 文書管理: 2つのcountを1つのgroupByに集約
-    prisma.pMSDocument.groupBy({
-      by: ["status"],
-      where: { organizationId: orgId },
-      _count: true,
-    }),
-
-    // 教育管理
-    prisma.trainingPlan.count({ where: { organizationId: orgId, fiscalYear: currentYear } }),
-    // TrainingResult: 2つのcountを1つのgroupByに集約
-    prisma.trainingResult.groupBy({
-      by: ["status"],
-      where: { trainingSession: { trainingPlan: { organizationId: orgId, fiscalYear: currentYear } } },
-      _count: true,
-    }),
-
-    // 委託先管理
-    prisma.vendor.count({ where: { organizationId: orgId, status: "ACTIVE" } }),
-    prisma.vendor.count({
-      where: {
-        organizationId: orgId,
-        status: "ACTIVE",
-        OR: [
-          { nextEvaluationDue: { lte: now } },
-          { overallRating: "UNRATED" },
-        ],
-      },
-    }),
-
-    // 監査管理
-    prisma.auditPlan.count({ where: { organizationId: orgId } }),
-    prisma.correctiveAction.count({
-      where: {
-        status: { notIn: ["CLOSED", "VERIFIED"] },
-        OR: [
-          { auditFinding: { auditPlan: { organizationId: orgId } } },
-          { incident: { organizationId: orgId } },
-        ],
-      },
-    }),
-
-    // 事故対応: 2つのcountを1つのgroupByに集約
-    prisma.incidentCase.groupBy({
-      by: ["status"],
-      where: { organizationId: orgId },
-      _count: true,
-    }),
-    prisma.incidentCase.count({
-      where: {
-        organizationId: orgId,
-        status: { notIn: ["CLOSED"] },
-        OR: [
-          { speedReportDeadline: { lt: now }, speedReportedAt: null, requiresSpeedReport: true },
-          { fullReportDeadline: { lt: now }, fullReportedAt: null, requiresFullReport: true },
-        ],
-      },
-    }),
-
-    // 申請管理
-    prisma.applicationPackage.count({ where: { organizationId: orgId } }),
-    prisma.applicationPackage.findFirst({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: "desc" },
-      select: { status: true, fiscalYear: true },
-    }),
-
-    // マネジメントレビュー
-    prisma.managementReview.count({ where: { organizationId: orgId } }),
-    prisma.managementReview.count({
-      where: { organizationId: orgId, status: { notIn: ["APPROVED", "LOCKED"] } },
-    }),
-  ]);
-
-  // groupBy結果から各statusのcountを抽出するヘルパー
-  const countByStatus = <T extends { status: string; _count: number }>(
-    groups: T[],
-    statuses: string[]
-  ): number => groups
-    .filter((g) => statuses.includes(g.status))
-    .reduce((sum, g) => sum + g._count, 0);
-
-  const sumAllGroups = <T extends { _count: number }>(groups: T[]): number =>
-    groups.reduce((sum, g) => sum + g._count, 0);
-
-  // 台帳統計
-  const totalItems = sumAllGroups(registerStatusGroups);
-  const pendingApproval = countByStatus(registerStatusGroups, ["PENDING_APPROVAL"]);
-  const approved = countByStatus(registerStatusGroups, ["APPROVED", "LOCKED"]);
-  const rejected = countByStatus(registerStatusGroups, ["REJECTED"]);
-
-  // リスク管理
-  const riskItemIdentified = countByStatus(riskItemStatusGroups, ["IDENTIFIED"]);
-
-  // 文書管理
-  const documentCount = sumAllGroups(docStatusGroups);
-  const documentActive = countByStatus(docStatusGroups, ["ACTIVE"]);
-
-  // 教育管理
-  const trainingResultTotal = sumAllGroups(trainingResultStatusGroups);
-  const trainingResultCompleted = countByStatus(trainingResultStatusGroups, ["COMPLETED"]);
-
-  // 事故対応
-  const incidentCount = sumAllGroups(incidentStatusGroups);
-  const incidentOpen = incidentCount - countByStatus(incidentStatusGroups, ["CLOSED"]);
-
-  const processProgress = processes.map((p) => {
-    const total = p.registerItems.length;
-    const done = p.registerItems.filter((i) => ["APPROVED", "LOCKED"].includes(i.status)).length;
-    const pending = p.registerItems.filter((i) => i.status === "PENDING_APPROVAL").length;
-    return { id: p.id, name: p.name, total, done, pending, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
-  });
-
-  const trainingCompletionRate =
-    trainingResultTotal > 0 ? Math.round((trainingResultCompleted / trainingResultTotal) * 100) : 0;
+  const { session, stats, registry, risks } = data;
+  const pendingQuestions = session.questions.filter(q => q.status === "pending");
 
   return (
-    <div>
-      {/* Welcome */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900 mb-1">
-          ダッシュボード
+    <div className="space-y-6">
+      {/* ヘッダー */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">
+          {session.company.name} のPマーク整備状況
         </h1>
-        <p className="text-sm text-slate-500">
-          <span className="font-medium text-slate-700">{session.user.name}</span> さん（{ROLE_LABELS[role]}）のビューを表示しています。
-        </p>
-      </div>
-
-      {/* 台帳統計 */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard label="台帳アイテム総数" value={totalItems} color="text-slate-800" href="/register/items" />
-        <StatCard label="承認申請中" value={pendingApproval} color="text-amber-600" href="/register/approvals" />
-        <StatCard label="承認済み" value={approved} color="text-green-600" href="/register/items" />
-        <StatCard label="差戻し対応" value={rejected} color="text-red-600" href="/register/approvals" />
-      </div>
-
-      {/* モジュール別統計カード */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold text-slate-700 mb-3">モジュール別ステータス</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <ModuleCard
-            title="リスク管理"
-            href="/risk"
-            icon="⚠"
-            stats={[
-              { label: "評価数", value: riskAssessmentCount, status: riskAssessmentCount > 0 ? "ok" : "neutral" },
-              { label: "未対応リスク", value: riskItemIdentified, status: riskItemIdentified > 0 ? "warn" : "ok" },
-              { label: "高リスク", value: riskItemHigh, status: riskItemHigh > 0 ? "danger" : "ok" },
-            ]}
-          />
-          <ModuleCard
-            title="文書管理"
-            href="/documents"
-            icon="📁"
-            stats={[
-              { label: "文書数", value: documentCount, status: "neutral" },
-              { label: "有効文書", value: documentActive, status: documentActive > 0 ? "ok" : "neutral" },
-            ]}
-          />
-          <ModuleCard
-            title="教育管理"
-            href="/training"
-            icon="🎓"
-            stats={[
-              { label: `${currentYear}年度計画`, value: trainingPlanCount, status: trainingPlanCount > 0 ? "ok" : "neutral" },
-              { label: "受講完了率", value: `${trainingCompletionRate}%`, status: trainingCompletionRate >= 80 ? "ok" : trainingCompletionRate >= 50 ? "warn" : "neutral" },
-            ]}
-          />
-          <ModuleCard
-            title="委託先管理"
-            href="/vendors"
-            icon="🏢"
-            stats={[
-              { label: "委託先数", value: vendorCount, status: "neutral" },
-              { label: "要評価", value: vendorNeedsEval, status: vendorNeedsEval > 0 ? "warn" : "ok" },
-            ]}
-          />
-          <ModuleCard
-            title="監査・是正"
-            href="/audit"
-            icon="🔍"
-            stats={[
-              { label: "監査計画", value: auditPlanCount, status: "neutral" },
-              { label: "未クローズ是正", value: correctiveUnclosed, status: correctiveUnclosed > 0 ? "warn" : "ok" },
-            ]}
-          />
-          <ModuleCard
-            title="事故対応"
-            href="/incidents"
-            icon="🚨"
-            stats={[
-              { label: "事故件数", value: incidentCount, status: "neutral" },
-              { label: "未対応", value: incidentOpen, status: incidentOpen > 0 ? "warn" : "ok" },
-              { label: "報告期限超過", value: incidentOverdue, status: incidentOverdue > 0 ? "danger" : "ok" },
-            ]}
-          />
-          <ModuleCard
-            title="申請管理"
-            href="/application"
-            icon="📝"
-            stats={[
-              { label: "パッケージ数", value: applicationPackageCount, status: "neutral" },
-              {
-                label: "最新状態",
-                value: latestApplication ? APPLICATION_STATUS_LABELS[latestApplication.status] ?? latestApplication.status : "未作成",
-                status: latestApplication?.status === "SUBMITTED" ? "ok" : latestApplication?.status === "APPROVED" ? "ok" : "neutral",
-              },
-            ]}
-          />
-          <ModuleCard
-            title="マネジメントレビュー"
-            href="/reviews"
-            icon="📊"
-            stats={[
-              { label: "レビュー数", value: reviewCount, status: "neutral" },
-              { label: "未承認", value: reviewUnapproved, status: reviewUnapproved > 0 ? "warn" : "ok" },
-            ]}
-          />
+        <div className="flex items-center gap-3 mt-2">
+          <StatusBadge status={session.status} label={STATUS_LABELS[session.status] ?? session.status} />
+          <span className="text-sm text-gray-500">{PHASE_LABELS[session.phase] ?? session.phase}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* Process Progress */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-700">台帳整備進捗</h2>
-            <Link href="/register/processes" className="text-xs text-blue-600 hover:text-blue-700">全て見る</Link>
+      {/* 統計カード */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="整備率" value={`${stats.completionRate}%`} color="blue" />
+        <StatCard label="業務プロセス" value={`${stats.businessProcessCount}件`} color="green" />
+        <StatCard label="要確認" value={`${stats.unconfirmed + stats.insufficientEvidence}件`} color="orange" />
+        <StatCard label="高リスク" value={`${stats.highRiskCount}件`} color="red" />
+      </div>
+
+      {/* AIの作業状況 */}
+      {session.status === "running" && (
+        <section className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-3">AIの作業状況</h2>
+          <div className="space-y-2 text-sm">
+            {stats.businessProcessCount > 0 && (
+              <ActivityItem icon="check" text={`${stats.businessProcessCount}つの業務プロセスを特定しました`} />
+            )}
+            {stats.riskCount > 0 && (
+              <ActivityItem icon="check" text={`${stats.riskCount}件のリスク評価を完了しました`} />
+            )}
+            <ActivityItem icon="spinner" text={PHASE_LABELS[session.phase] ?? "処理中..."} />
           </div>
+        </section>
+      )}
 
-          {processProgress.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">業務プロセスが未登録です</p>
-          ) : (
-            <div className="space-y-4">
-              {processProgress.map((p) => (
-                <div key={p.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-slate-700">{p.name}</span>
-                    <span className="text-xs text-slate-400">{p.done}/{p.total} ({p.pct}%)</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-500 rounded-full transition-all"
-                      style={{ width: `${p.pct}%` }}
-                    />
-                  </div>
-                  {p.pending > 0 && (
-                    <p className="text-xs text-amber-600 mt-0.5">承認申請中 {p.pending}件</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Role-specific tasks */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">
-            {role === "PRIVACY_OFFICER" && "承認待ち台帳"}
-            {role === "DEPT_STAFF" && "ヒアリング・差戻し対応"}
-            {role === "TOP_MANAGEMENT" && "全体サマリー"}
+      {/* 質問セクション */}
+      {pendingQuestions.length > 0 && (
+        <section className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-3">
+            あなたへの質問 ({pendingQuestions.length}件)
           </h2>
-
-          {role === "PRIVACY_OFFICER" && (
-            <div className="space-y-2">
-              {pendingApproval > 0 ? (
-                <>
-                  <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                    <span className="text-xl">⏳</span>
-                    <div>
-                      <p className="text-sm font-medium text-amber-800">{pendingApproval}件の承認申請が届いています</p>
-                      <Link href="/register/approvals" className="text-xs text-amber-600 hover:underline">承認一覧を確認する →</Link>
-                    </div>
-                  </div>
-                  {rejected > 0 && (
-                    <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                      <span className="text-xl">↩</span>
-                      <div>
-                        <p className="text-sm font-medium text-red-800">{rejected}件の差戻し対応が必要です</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-xs text-slate-400 text-center py-6">承認待ちはありません</p>
-              )}
-            </div>
-          )}
-
-          {role === "DEPT_STAFF" && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <span className="text-xl">📋</span>
-                <div>
-                  <p className="text-sm font-medium text-blue-800">ヒアリングを実施する</p>
-                  <Link href="/register/hearing" className="text-xs text-blue-600 hover:underline">ヒアリング入力へ →</Link>
-                </div>
-              </div>
-              {rejected > 0 && (
-                <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                  <span className="text-xl">↩</span>
-                  <div>
-                    <p className="text-sm font-medium text-red-800">{rejected}件の差戻し対応が必要です</p>
-                    <Link href="/register/approvals" className="text-xs text-red-600 hover:underline">確認する →</Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {role === "TOP_MANAGEMENT" && (
-            <div className="space-y-3">
-              {[
-                { label: "全業務プロセス", value: processes.length, unit: "件", href: "/register/processes" },
-                { label: "台帳整備完了", value: approved, unit: "件", href: "/register/items" },
-                { label: "整備率", value: totalItems > 0 ? Math.round((approved / totalItems) * 100) : 0, unit: "%", href: "/register/items" },
-              ].map((s) => (
-                <Link key={s.label} href={s.href} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-sm text-slate-600">{s.label}</span>
-                  <span className="text-base font-bold text-slate-800">{s.value}<span className="text-xs font-normal text-slate-400 ml-0.5">{s.unit}</span></span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Activity Log */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 col-span-2">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">最近の活動</h2>
-          {recentLogs.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6">活動ログがありません</p>
-          ) : (
-            <div className="space-y-2">
-              {recentLogs.map((log) => {
-                let details: Record<string, string> = {};
-                try { details = JSON.parse(log.details ?? "{}"); } catch { /* ignore parse error */ }
-                return (
-                  <div key={log.id} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
-                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs shrink-0">
-                      {log.user?.name?.[0] ?? "S"}
-                    </div>
-                    <span className="text-xs text-slate-500 w-24 shrink-0">
-                      {new Date(log.createdAt).toLocaleDateString("ja-JP")}
-                    </span>
-                    <span className="text-xs font-medium text-slate-700 w-16 shrink-0">
-                      {log.user?.name ?? "システム"}
-                    </span>
-                    <span className="text-xs text-slate-600">
-                      {ENTITY_LABELS[log.entityType] ?? log.entityType}を
-                      {ACTION_LABELS[log.action] ?? log.action}
-                      {details.message ? `: ${details.message}` : ""}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* AI Suggest */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-5 col-span-2">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
-              <span className="text-white text-sm">✨</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-blue-800 mb-1">AIアシスタントからのサジェスト</p>
-              <p className="text-xs text-blue-700 leading-relaxed">
-                {totalItems === 0
-                  ? "台帳アイテムが未登録です。まず「業務プロセス」を登録して、AIヒアリングフローで台帳候補を生成することをお勧めします。"
-                  : approved < totalItems
-                  ? `${totalItems - approved}件の台帳アイテムがまだ承認されていません。ヒアリングで推定（INFERRED）状態のアイテムを確認・確定し、承認申請してください。`
-                  : "台帳整備が完了しています。次はリスク管理・内部監査の準備を進めましょう。"}
-              </p>
-              <Link href="/ai-support" className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block font-medium hover:underline">
-                AIアシスタントに相談する →
-              </Link>
-            </div>
+          <div className="space-y-4">
+            {pendingQuestions.map(q => (
+              <QuestionCard key={q.id} question={q} onAnswered={fetchData} />
+            ))}
           </div>
-        </div>
-      </div>
+        </section>
+      )}
+
+      {/* 個人情報管理台帳 */}
+      {registry.length > 0 && (
+        <section className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-4">個人情報管理台帳</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase">
+                  <th className="pb-2 pr-3">No.</th>
+                  <th className="pb-2 pr-3">業務プロセス</th>
+                  <th className="pb-2 pr-3">個人情報項目</th>
+                  <th className="pb-2 pr-3">データ主体</th>
+                  <th className="pb-2 pr-3">利用目的</th>
+                  <th className="pb-2 pr-3">保管場所</th>
+                  <th className="pb-2">確信度</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  let rowNum = 0;
+                  return registry.flatMap(bp =>
+                    bp.items.map(item => {
+                      rowNum++;
+                      const worstStatus = getWorstStatus([
+                        item.purposeStatus,
+                        item.acquisitionMethodStatus,
+                        item.storageStatus,
+                        item.retentionPeriodStatus,
+                        item.disposalMethodStatus,
+                        item.thirdPartyStatus,
+                      ]);
+                      return (
+                        <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-2 pr-3 text-gray-400">{rowNum}</td>
+                          <td className="py-2 pr-3 font-medium text-gray-900">{bp.name}</td>
+                          <td className="py-2 pr-3 text-gray-700">{item.dataCategory}</td>
+                          <td className="py-2 pr-3 text-gray-600">{item.dataSubject ?? "—"}</td>
+                          <td className="py-2 pr-3 text-gray-600 max-w-48 truncate">{item.purpose ?? "—"}</td>
+                          <td className="py-2 pr-3 text-gray-600">{item.storageLocation ?? "—"}</td>
+                          <td className="py-2"><ConfidenceBadge status={worstStatus} /></td>
+                        </tr>
+                      );
+                    })
+                  );
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* リスク分析 */}
+      {risks.length > 0 && (
+        <section className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-4">リスク分析</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase">
+                  <th className="pb-2 pr-3">スコア</th>
+                  <th className="pb-2 pr-3">業務プロセス</th>
+                  <th className="pb-2 pr-3">脅威</th>
+                  <th className="pb-2 pr-3">現状の対策</th>
+                  <th className="pb-2">推奨対策</th>
+                </tr>
+              </thead>
+              <tbody>
+                {risks.map(r => (
+                  <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-2 pr-3"><RiskScoreBadge score={r.riskScore} /></td>
+                    <td className="py-2 pr-3 font-medium text-gray-900">{r.businessProcess}</td>
+                    <td className="py-2 pr-3 text-gray-700">{r.threat}</td>
+                    <td className="py-2 pr-3 text-gray-600 max-w-48 truncate">{r.currentMeasures ?? "—"}</td>
+                    <td className="py-2 text-gray-600 max-w-56 truncate">{r.recommendedMeasures ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+  const colorMap: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-700 border-blue-200",
+    green: "bg-green-50 text-green-700 border-green-200",
+    orange: "bg-orange-50 text-orange-700 border-orange-200",
+    red: "bg-red-50 text-red-700 border-red-200",
+  };
+  return (
+    <div className={`rounded-lg border p-4 ${colorMap[color] ?? colorMap.blue}`}>
+      <p className="text-xs opacity-75">{label}</p>
+      <p className="text-2xl font-bold mt-1">{value}</p>
+    </div>
+  );
+}
+
+function ActivityItem({ icon, text }: { icon: "check" | "spinner"; text: string }) {
+  return (
+    <div className="flex items-center gap-2 text-gray-700">
+      {icon === "check" ? (
+        <span className="text-green-500 flex-shrink-0">&#10003;</span>
+      ) : (
+        <span className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full flex-shrink-0" />
+      )}
+      <span>{text}</span>
+    </div>
+  );
+}
+
+const CONFIDENCE_STYLES: Record<string, { label: string; className: string }> = {
+  confirmed: { label: "確認済", className: "bg-green-100 text-green-800" },
+  estimated: { label: "推定", className: "bg-yellow-100 text-yellow-800" },
+  unconfirmed: { label: "未確認", className: "bg-orange-100 text-orange-800" },
+  insufficient_evidence: { label: "証跡不足", className: "bg-red-100 text-red-800" },
+};
+
+function ConfidenceBadge({ status }: { status: string }) {
+  const style = CONFIDENCE_STYLES[status] ?? CONFIDENCE_STYLES.unconfirmed;
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${style.className}`}>
+      {style.label}
+    </span>
+  );
+}
+
+function getWorstStatus(statuses: string[]): string {
+  const priority = ["insufficient_evidence", "unconfirmed", "estimated", "confirmed"];
+  for (const p of priority) {
+    if (statuses.includes(p)) return p;
+  }
+  return "unconfirmed";
+}
+
+function RiskScoreBadge({ score }: { score: number | null }) {
+  if (score == null) return <span className="text-gray-400">—</span>;
+  let className = "bg-green-100 text-green-800";
+  if (score >= 9) className = "bg-red-100 text-red-800";
+  else if (score >= 6) className = "bg-orange-100 text-orange-800";
+  else if (score >= 4) className = "bg-yellow-100 text-yellow-800";
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${className}`}>
+      {score}
+    </span>
   );
 }

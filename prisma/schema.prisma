@@ -8,971 +8,307 @@ datasource db {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// ガバナンス・マスタ層
+// Company (企業)
 // ════════════════════════════════════════════════════════════════════
 
-model Organization {
+model Company {
   id        String   @id @default(cuid())
   name      String
-  code      String   @unique
+  url       String?
+  industry  String?
+  employeeCount String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // 基本情報
-  industry        String?
-  mainBusiness    String?
-  employeeCount   String?
-  establishedYear String?
-  capital         String?
-  representative  String?
-  address         String?
-  phone           String?
-  websiteUrl      String?
+  businessProcesses BusinessProcess[]
+  personalInfoItems PersonalInfoItem[]
+  dataSubjects      DataSubject[]
+  storageLocations  StorageLocation[]
+  thirdParties      ThirdParty[]
+  agentSessions     AgentSession[]
+  documents         Document[]
+}
 
-  // Pマーク管理
-  pmarkNumber     String?
-  pmarkExpiry     DateTime?
-  certifyingBody  String?
+// ════════════════════════════════════════════════════════════════════
+// BusinessProcess (業務プロセス)
+// ════════════════════════════════════════════════════════════════════
 
-  // AI調査結果キャッシュ
-  aiProfileSummary  String?
-  aiResearchSources String?
-  aiResearchedAt    DateTime?
+model BusinessProcess {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  department  String?
+  description String?
+  createdBySession String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bpPiis    BusinessProcessPII[]
+
+  @@unique([companyId, name])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PersonalInfoItem (個人情報項目 — 名寄せされた実体)
+// ════════════════════════════════════════════════════════════════════
+
+model PersonalInfoItem {
+  id            String   @id @default(cuid())
+  companyId     String
+  canonicalName String
+  aliases       String   @default("[]") // JSON array
+  isSensitive   Boolean  @default(false) // 要配慮個人情報フラグ
+  createdAt     DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bpPiis  BusinessProcessPII[]
+
+  @@unique([companyId, canonicalName])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DataSubject (データ主体)
+// ════════════════════════════════════════════════════════════════════
+
+model DataSubject {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String // 顧客, 従業員, 応募者, etc.
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bpPiis  BusinessProcessPII[]
+
+  @@unique([companyId, name])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// StorageLocation (保管場所)
+// ════════════════════════════════════════════════════════════════════
+
+model StorageLocation {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  type      String?  // cloud_saas | on_premise | paper | external_service
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bpPiis  BusinessProcessPII[]
+
+  @@unique([companyId, name])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ThirdParty (第三者提供先・委託先)
+// ════════════════════════════════════════════════════════════════════
+
+model ThirdParty {
+  id              String   @id @default(cuid())
+  companyId       String
+  name            String
+  role            String?  // third_party | subcontractor
+  contractStatus  String   @default("unconfirmed") // confirmed | unconfirmed
+  createdAt       DateTime @default(now())
+
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bpPiiThirdParties BpPiiThirdParty[]
+
+  @@unique([companyId, name])
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BusinessProcessPII (業務×個人情報 リレーション — 核テーブル)
+// ════════════════════════════════════════════════════════════════════
+
+model BusinessProcessPII {
+  id                  String   @id @default(cuid())
+  businessProcessId   String
+  personalInfoItemId  String
+  dataSubjectId       String?
+  storageLocationId   String?
+
+  // フィールド値
+  purpose             String?
+  acquisitionMethod   String?
+  accessSubjects      String?  // JSON array
+  retentionPeriod     String?
+  disposalMethod      String?
+  volumeEstimate      String?
+
+  // フィールド単位の確信度ステータス
+  purposeStatus           String @default("unconfirmed")
+  acquisitionMethodStatus String @default("unconfirmed")
+  storageStatus           String @default("unconfirmed")
+  accessSubjectsStatus    String @default("unconfirmed")
+  retentionPeriodStatus   String @default("unconfirmed")
+  disposalMethodStatus    String @default("unconfirmed")
+  volumeEstimateStatus    String @default("unconfirmed")
+  thirdPartyStatus        String @default("unconfirmed")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 既存リレーション
-  departments       Department[]
-  users             User[]
-  businessProcesses BusinessProcess[]
-  researchProfiles  ResearchProfile[]
+  businessProcess  BusinessProcess  @relation(fields: [businessProcessId], references: [id], onDelete: Cascade)
+  personalInfoItem PersonalInfoItem @relation(fields: [personalInfoItemId], references: [id], onDelete: Cascade)
+  dataSubject      DataSubject?     @relation(fields: [dataSubjectId], references: [id])
+  storageLocation  StorageLocation? @relation(fields: [storageLocationId], references: [id])
 
-  // 新規モジュール逆リレーション
-  riskAssessments       RiskAssessment[]
-  pmsDocuments          PMSDocument[]
-  trainingPlans         TrainingPlan[]
-  vendors               Vendor[]
-  auditPlans            AuditPlan[]
-  incidentCases         IncidentCase[]
-  applicationPackages   ApplicationPackage[]
-  managementReviews     ManagementReview[]
+  thirdParties     BpPiiThirdParty[]
+  evidences        Evidence[]
+  riskAssessments  RiskAssessment[]
+  fieldChangeLogs  FieldChangeLog[]
+  questionLinks    QuestionBpPii[]
 }
 
-model Department {
-  id             String   @id @default(cuid())
-  name           String
-  code           String
-  organizationId String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+// 多対多中間テーブル: BusinessProcessPII × ThirdParty
+model BpPiiThirdParty {
+  id           String @id @default(cuid())
+  bpPiiId      String
+  thirdPartyId String
 
-  organization      Organization    @relation(fields: [organizationId], references: [id])
-  users             User[]
-  businessProcesses BusinessProcess[]
-  auditPlanDepartments AuditPlanDepartment[]
-}
+  bpPii      BusinessProcessPII @relation(fields: [bpPiiId], references: [id], onDelete: Cascade)
+  thirdParty ThirdParty         @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
 
-model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String
-  role           String
-  departmentId   String?
-  organizationId String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  department   Department?  @relation(fields: [departmentId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
-  auditLogs    AuditLog[]
-  aiUsageLogs  AiUsageLog[]
-
-  // M-02 台帳
-  approvedRegisterItems RegisterItem[] @relation("RegisterApprover")
-
-  // M-03 リスク
-  riskAssessmentsAssessed  RiskAssessment[] @relation("RiskAssessor")
-  riskAssessmentsApproved  RiskAssessment[] @relation("RiskApprover")
-  residualRisksAccepted    ResidualRisk[]   @relation("ResidualRiskAcceptor")
-
-  // M-04 文書
-  docVersionsCreated  PMSDocumentVersion[] @relation("DocVersionCreator")
-  docVersionsApproved PMSDocumentVersion[] @relation("DocVersionApprover")
-  evidenceUploaded    EvidenceRecord[]     @relation("EvidenceUploader")
-
-  // M-05 教育
-  trainingPlansCreated  TrainingPlan[]    @relation("TrainingPlanCreator")
-  trainingPlansApproved TrainingPlan[]    @relation("TrainingPlanApprover")
-  trainingResults       TrainingResult[]
-
-  // M-06 委託先
-  vendorEvalsEvaluated VendorEvaluation[] @relation("VendorEvaluator")
-  vendorEvalsApproved  VendorEvaluation[] @relation("VendorEvalApprover")
-
-  // M-07 監査
-  auditPlansLead                AuditPlan[]        @relation("AuditPlanLead")
-  auditPlanAuditors             AuditPlanAuditor[]
-  correctiveActionsResponsible  CorrectiveAction[] @relation("CorrectiveResponsible")
-  correctiveActionsVerified     CorrectiveAction[] @relation("CorrectiveVerifier")
-  correctiveActionsApproved     CorrectiveAction[] @relation("CorrectiveApprover")
-
-  // M-08 事故
-  incidentsReported       IncidentCase[]   @relation("IncidentReporter")
-  incidentsAssigned       IncidentCase[]   @relation("IncidentAssignee")
-  incidentActionsPerformed IncidentAction[] @relation("IncidentActionPerformer")
-
-  // M-09 申請
-  appPackagesCreated  ApplicationPackage[] @relation("AppPackageCreator")
-  appPackagesApproved ApplicationPackage[] @relation("AppPackageApprover")
-
-  // M-11 マネジメントレビュー
-  reviewsChaired            ManagementReview[]            @relation("ReviewChairperson")
-  reviewsApproved           ManagementReview[]            @relation("ReviewApprover")
-  reviewDecisionsResponsible ManagementReviewDecision[]   @relation("ReviewDecisionResponsible")
-  reviewParticipations      ManagementReviewParticipant[]
-}
-
-model BusinessProcess {
-  id             String   @id @default(cuid())
-  name           String
-  description    String
-  departmentId   String
-  organizationId String
-  status         String   @default("ACTIVE")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  department    Department   @relation(fields: [departmentId], references: [id])
-  organization  Organization @relation(fields: [organizationId], references: [id])
-  hearings      Hearing[]
-  registerItems RegisterItem[]
-  riskItems     RiskItem[]
+  @@unique([bpPiiId, thirdPartyId])
 }
 
 // ════════════════════════════════════════════════════════════════════
-// 事前調査フロー
+// Evidence (証跡)
 // ════════════════════════════════════════════════════════════════════
 
-model ResearchProfile {
-  id             String   @id @default(cuid())
-  organizationId String
-  companyOverview  String?
-  industryType     String?
-  employeeCount    String?
-  mainServices     String?
-  dataSubjectsEst  String?
-  systemsEst       String?
-  rawNotes         String?
-  aiSummary        String?
-  status           String   @default("DRAFT")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Evidence {
+  id            String   @id @default(cuid())
+  bpPiiId       String?
+  riskId        String?
+  targetField   String   // どのフィールドの根拠か (e.g. "retentionPeriod")
+  sourceType    String   // file | web | questionnaire
+  sourceRef     String   // ファイル名 or URL
+  detail        String?  // 該当箇所の説明
+  capturedAt    DateTime @default(now())
+  snapshotS3Key String?  // S3に保存したWebスナップショットのkey
+  createdBy     String   @default("agent") // agent | human
 
-  organization       Organization        @relation(fields: [organizationId], references: [id])
-  researchSources    ResearchSource[]
-  interviewHypotheses InterviewHypothesis[]
-}
-
-model ResearchSource {
-  id                String   @id @default(cuid())
-  researchProfileId String
-  sourceType        String
-  url               String?
-  title             String
-  snippet           String?
-  relevanceNote     String?
-  createdAt         DateTime @default(now())
-
-  researchProfile ResearchProfile @relation(fields: [researchProfileId], references: [id])
-}
-
-model InterviewHypothesis {
-  id                String   @id @default(cuid())
-  researchProfileId String
-  topic             String
-  question          String
-  hypothesis        String?
-  confidenceLevel   String   @default("LOW")
-  priority          Int      @default(3)
-  basis             String?
-  answered          Boolean  @default(false)
-  answer            String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  researchProfile ResearchProfile @relation(fields: [researchProfileId], references: [id])
+  bpPii          BusinessProcessPII? @relation(fields: [bpPiiId], references: [id], onDelete: Cascade)
+  riskAssessment RiskAssessment?     @relation(fields: [riskId], references: [id], onDelete: Cascade)
 }
 
 // ════════════════════════════════════════════════════════════════════
-// ヒアリング
-// ════════════════════════════════════════════════════════════════════
-
-model Hearing {
-  id                String   @id @default(cuid())
-  businessProcessId String
-  submittedById     String?
-  status            String   @default("DRAFT")
-  answers           String
-  aiCandidates      String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  businessProcess BusinessProcess @relation(fields: [businessProcessId], references: [id])
-}
-
-// ════════════════════════════════════════════════════════════════════
-// M-02 台帳
-// ════════════════════════════════════════════════════════════════════
-
-model RegisterItem {
-  id                  String    @id @default(cuid())
-  businessProcessId   String
-  dataSubject         String
-  dataCategoryCodes   String    @default("[]")
-  dataFieldCodes      String    @default("[]")
-  purpose             String
-  legalBasis          String
-  retentionPeriod     String
-  storageLocation     String
-  thirdPartyProvision String    @default("NONE")
-
-  confirmationStatus  String    @default("UNCONFIRMED")
-  inferenceBasis      String?
-
-  status              String    @default("DRAFT")
-  version             Int       @default(1)
-  approvedById        String?
-  approvedAt          DateTime?
-  rejectionReason     String?
-  lockedAt            DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  businessProcess BusinessProcess         @relation(fields: [businessProcessId], references: [id])
-  approvedBy      User?                   @relation("RegisterApprover", fields: [approvedById], references: [id])
-  evidenceRecords EvidenceRecord[]
-  exportPackages  RegisterExportPackage[]
-  riskItems       RiskItem[]
-}
-
-model EvidenceRecord {
-  id             String   @id @default(cuid())
-  registerItemId String?
-  type           String
-  title          String
-  description    String?
-  filePath       String?
-  fileName       String?
-  fileSize       Int?
-  mimeType       String?
-  aiSummary      String?
-  evidenceDate   DateTime?
-  retentionUntil DateTime?
-  uploadedById   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  registerItem    RegisterItem?    @relation(fields: [registerItemId], references: [id])
-  uploadedBy      User?            @relation("EvidenceUploader", fields: [uploadedById], references: [id])
-
-  // 新規紐付け先
-  riskItemId         String?
-  vendorId           String?
-  incidentId         String?
-  auditFindingId     String?
-  correctiveActionId String?
-
-  riskItem         RiskItem?         @relation(fields: [riskItemId], references: [id])
-  vendor           Vendor?           @relation(fields: [vendorId], references: [id])
-  incident         IncidentCase?     @relation(fields: [incidentId], references: [id])
-  auditFinding     AuditFinding?     @relation(fields: [auditFindingId], references: [id])
-  correctiveAction CorrectiveAction? @relation(fields: [correctiveActionId], references: [id])
-
-  @@index([registerItemId])
-  @@index([riskItemId])
-  @@index([vendorId])
-  @@index([incidentId])
-  @@index([uploadedById])
-}
-
-model RegisterExportPackage {
-  id             String   @id @default(cuid())
-  registerItemId String
-  fileName       String
-  filePath       String
-  generatedById  String?
-  createdAt      DateTime @default(now())
-
-  registerItem RegisterItem @relation(fields: [registerItemId], references: [id])
-}
-
-// ════════════════════════════════════════════════════════════════════
-// M-03 リスク管理
+// RiskAssessment (リスク評価)
 // ════════════════════════════════════════════════════════════════════
 
 model RiskAssessment {
-  id              String   @id @default(cuid())
-  organizationId  String
-  businessProcessId String?
-  fiscalYear      Int
-  title           String
-  description     String?
-  targetScope     String?
-  assessedById    String?
-  approvedById    String?
-  approvedAt      DateTime?
-  status          String   @default("DRAFT") // DRAFT | IN_PROGRESS | COMPLETED | APPROVED
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  bpPiiId             String
+  threat              String
+  vulnerability       String
+  likelihood          String   // high | medium | low
+  impact              String   // high | medium | low
+  riskScore           Int?     // computed
+  currentMeasures     String?
+  recommendedMeasures String?
+  residualRisk        String?
+  confidence          String   @default("unconfirmed")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  assessedBy      User?            @relation("RiskAssessor", fields: [assessedById], references: [id])
-  approvedBy      User?            @relation("RiskApprover", fields: [approvedById], references: [id])
-  items           RiskItem[]
-
-  @@index([organizationId])
-}
-
-model RiskItem {
-  id                 String   @id @default(cuid())
-  riskAssessmentId   String
-  registerItemId     String?
-  businessProcessId  String?
-  lifecycleStage     String   // ACQUISITION | USE | STORAGE | PROVISION | ENTRUSTMENT | DISPOSAL
-  description        String
-  threatSource       String?
-  vulnerability      String?
-  likelihood         Int      @default(1) // 1-3
-  impact             Int      @default(1) // 1-3
-  riskValue          Int      @default(1) // likelihood * impact
-  status             String   @default("IDENTIFIED") // IDENTIFIED | ANALYZED | TREATED
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  riskAssessment  RiskAssessment   @relation(fields: [riskAssessmentId], references: [id], onDelete: Cascade)
-  registerItem    RegisterItem?    @relation(fields: [registerItemId], references: [id])
-  businessProcess BusinessProcess? @relation(fields: [businessProcessId], references: [id])
-  measures        ControlMeasure[]
-  residualRisk    ResidualRisk?
-  evidenceRecords EvidenceRecord[]
-
-  @@index([riskAssessmentId])
-}
-
-model ControlMeasure {
-  id          String   @id @default(cuid())
-  riskItemId  String
-  category    String   // ORGANIZATIONAL | HUMAN | PHYSICAL | TECHNICAL
-  description String
-  responsible String?
-  status      String   @default("PLANNED") // PLANNED | IMPLEMENTED | VERIFIED
-  implementedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  riskItem RiskItem @relation(fields: [riskItemId], references: [id], onDelete: Cascade)
-}
-
-model ResidualRisk {
-  id            String    @id @default(cuid())
-  riskItemId    String    @unique
-  likelihood    Int       @default(1)
-  impact        Int       @default(1)
-  riskValue     Int       @default(1)
-  accepted      Boolean   @default(false)
-  acceptedById  String?
-  acceptedAt    DateTime?
-  justification String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  riskItem   RiskItem @relation(fields: [riskItemId], references: [id], onDelete: Cascade)
-  acceptedBy User?    @relation("ResidualRiskAcceptor", fields: [acceptedById], references: [id])
+  bpPii     BusinessProcessPII @relation(fields: [bpPiiId], references: [id], onDelete: Cascade)
+  evidences Evidence[]
 }
 
 // ════════════════════════════════════════════════════════════════════
-// M-04 文書管理
+// Question (確認依頼)
 // ════════════════════════════════════════════════════════════════════
 
-model PMSDocument {
+model Question {
   id             String   @id @default(cuid())
-  organizationId String
-  type           String   // POLICY | PROCEDURE | TEMPLATE | RECORD | GUIDELINE
-  title          String
-  description    String?
-  category       String?  // PMS_BASIC | SECURITY | TRAINING | AUDIT | CONTRACT | OTHER
-  status         String   @default("DRAFT") // DRAFT | ACTIVE | ARCHIVED
+  sessionId      String
+  questionText   String
+  questionType   String   // single_choice | multiple_choice | yes_no | free_text
+  options        String?  // JSON array
+  relatedFields  String?  // JSON array of field names
+  priority       String   // critical | important | nice_to_have
+  context        String?
+  status         String   @default("pending") // pending | answered | skipped | escalated
+  answer         String?
+  answeredAt     DateTime?
+  answeredBy     String?
+  askCount       Int      @default(1)
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 
-  organization Organization       @relation(fields: [organizationId], references: [id])
-  versions     PMSDocumentVersion[]
-
-  @@index([organizationId])
+  session       AgentSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  bpPiiLinks    QuestionBpPii[]
 }
 
-model PMSDocumentVersion {
-  id            String    @id @default(cuid())
-  documentId    String
-  versionNumber String
-  effectiveDate DateTime?
-  filePath      String?
-  fileName      String?
-  fileSize      Int?
-  changeNote    String?
-  createdById   String?
-  approvedById  String?
-  approvedAt    DateTime?
-  status        String    @default("DRAFT") // DRAFT | APPROVED | SUPERSEDED
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+// 多対多中間テーブル: Question × BusinessProcessPII
+model QuestionBpPii {
+  id         String @id @default(cuid())
+  questionId String
+  bpPiiId    String
 
-  document   PMSDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  createdBy  User?       @relation("DocVersionCreator", fields: [createdById], references: [id])
-  approvedBy User?       @relation("DocVersionApprover", fields: [approvedById], references: [id])
+  question Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  bpPii    BusinessProcessPII @relation(fields: [bpPiiId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, bpPiiId])
 }
 
 // ════════════════════════════════════════════════════════════════════
-// M-05 教育管理
+// Document (生成文書)
 // ════════════════════════════════════════════════════════════════════
 
-model TrainingPlan {
-  id             String   @id @default(cuid())
-  organizationId String
-  fiscalYear     Int
-  title          String
-  description    String?
-  targetDetails  String?  // JSON: { departmentIds[], roleNames[] }
-  createdById    String?
-  approvedById   String?
-  approvedAt     DateTime?
-  status         String   @default("DRAFT") // DRAFT | SCHEDULED | IN_PROGRESS | COMPLETED
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization      @relation(fields: [organizationId], references: [id])
-  createdBy    User?             @relation("TrainingPlanCreator", fields: [createdById], references: [id])
-  approvedBy   User?             @relation("TrainingPlanApprover", fields: [approvedById], references: [id])
-  sessions     TrainingSession[]
-
-  @@index([organizationId])
-}
-
-model TrainingSession {
-  id              String    @id @default(cuid())
-  trainingPlanId  String
-  title           String
-  sessionDate     DateTime?
-  facilitator     String?
-  location        String?
-  materialNote    String?
-  status          String    @default("SCHEDULED") // SCHEDULED | IN_PROGRESS | COMPLETED
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  trainingPlan TrainingPlan    @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
-  results      TrainingResult[]
-  quizQuestions QuizQuestion[]
-}
-
-model TrainingResult {
+model Document {
   id               String    @id @default(cuid())
-  trainingSessionId String
-  userId           String
-  attended         Boolean   @default(false)
-  attendedAt       DateTime?
-  quizScore        Int?
-  quizMaxScore     Int?
-  passed           Boolean?
-  status           String    @default("PENDING") // PENDING | ATTENDED | QUIZ_DONE | COMPLETED
-  completedAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  trainingSession TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
-  user            User            @relation(fields: [userId], references: [id])
-
-  @@unique([trainingSessionId, userId])
-}
-
-model QuizQuestion {
-  id                String   @id @default(cuid())
-  trainingSessionId String
-  questionText      String
-  questionType      String   @default("SINGLE_CHOICE") // SINGLE_CHOICE | MULTI_CHOICE | TRUE_FALSE
-  options           String   // JSON: string[]
-  correctAnswer     String   // JSON: string | string[]
-  points            Int      @default(1)
-  sortOrder         Int      @default(0)
-  createdAt         DateTime @default(now())
-
-  trainingSession TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
-}
-
-// ════════════════════════════════════════════════════════════════════
-// M-06 委託先管理
-// ════════════════════════════════════════════════════════════════════
-
-model Vendor {
-  id              String    @id @default(cuid())
-  organizationId  String
-  name            String
-  vendorType      String    @default("OUTSOURCE") // OUTSOURCE | SAAS | CLOUD | SUBCONTRACT | OTHER
-  description     String?
-  contactName     String?
-  contactEmail    String?
-  contactPhone    String?
-  hasPmark        Boolean   @default(false)
-  pmarkNumber     String?
-  hasIsms         Boolean   @default(false)
-  ismsNumber      String?
-  contractStartDate DateTime?
-  contractEndDate   DateTime?
-  renewalDate       DateTime?
-  dataHandled     String?   // JSON: 委託する個人情報の概要
-  overallRating   String    @default("UNRATED") // A | B | C | D | UNRATED
-  nextEvaluationDue DateTime?
-  status          String    @default("ACTIVE") // ACTIVE | PENDING_REVIEW | SUSPENDED | TERMINATED
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  organization     Organization          @relation(fields: [organizationId], references: [id])
-  evaluations      VendorEvaluation[]
-  questionnaires   VendorQuestionnaire[]
-  evidenceRecords  EvidenceRecord[]
-
-  @@index([organizationId])
-}
-
-model VendorEvaluation {
-  id             String    @id @default(cuid())
-  vendorId       String
-  fiscalYear     Int
-  evaluatedById  String?
-  scores         String?   // JSON: { organizational, human, physical, technical }
-  overallScore   Int?
-  rating         String?   // A | B | C | D
-  findings       String?
-  status         String    @default("DRAFT") // DRAFT | COMPLETED | APPROVED
-  approvedById   String?
-  approvedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  vendor      Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  evaluatedBy User?  @relation("VendorEvaluator", fields: [evaluatedById], references: [id])
-  approvedBy  User?  @relation("VendorEvalApprover", fields: [approvedById], references: [id])
-}
-
-model VendorQuestionnaire {
-  id         String    @id @default(cuid())
-  vendorId   String
-  sentAt     DateTime?
-  dueDate    DateTime?
-  respondedAt DateTime?
-  questions  String?   // JSON
-  answers    String?   // JSON
-  status     String    @default("DRAFT") // DRAFT | SENT | RESPONDED | EVALUATED
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-}
-
-// ════════════════════════════════════════════════════════════════════
-// M-07 監査・是正管理
-// ════════════════════════════════════════════════════════════════════
-
-model AuditPlan {
-  id              String    @id @default(cuid())
-  organizationId  String
-  fiscalYear      Int
-  title           String
-  scope           String?
-  criteria        String?
-  leadAuditorId   String?
-  scheduledDate   DateTime?
-  completedDate   DateTime?
-  status          String    @default("DRAFT") // DRAFT | PLANNED | IN_PROGRESS | COMPLETED | REPORTED
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  organization    Organization          @relation(fields: [organizationId], references: [id])
-  leadAuditor     User?                 @relation("AuditPlanLead", fields: [leadAuditorId], references: [id])
-  targetDepts     AuditPlanDepartment[]
-  auditors        AuditPlanAuditor[]
-  checklistItems  AuditChecklistItem[]
-  findings        AuditFinding[]
-
-  @@index([organizationId])
-}
-
-model AuditPlanDepartment {
-  id           String @id @default(cuid())
-  auditPlanId  String
-  departmentId String
-
-  auditPlan  AuditPlan  @relation(fields: [auditPlanId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id])
-
-  @@unique([auditPlanId, departmentId])
-}
-
-model AuditPlanAuditor {
-  id          String @id @default(cuid())
-  auditPlanId String
-  userId      String
-  role        String @default("AUDITOR") // LEAD | AUDITOR
-
-  auditPlan AuditPlan @relation(fields: [auditPlanId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id])
-
-  @@unique([auditPlanId, userId])
-}
-
-model AuditChecklistItem {
-  id             String   @id @default(cuid())
-  auditPlanId    String
-  category       String?  // JIS条項カテゴリ
-  question       String
-  responseType   String   @default("YES_NO") // YES_NO | RATING | TEXT
-  result         String?  // YES | NO | NA | 点数 | テキスト
-  evidenceNote   String?
-  comment        String?
-  sortOrder      Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  auditPlan AuditPlan @relation(fields: [auditPlanId], references: [id], onDelete: Cascade)
-}
-
-model AuditFinding {
-  id              String    @id @default(cuid())
-  auditPlanId     String
-  severity        String    @default("MINOR") // MINOR | MAJOR | CRITICAL | OBSERVATION
-  title           String
-  description     String
-  jisClause       String?
-  rootCauseTitle  String?
-  status          String    @default("OPEN") // OPEN | CORRECTIVE_ACTION | CLOSED
-  closedAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  auditPlan        AuditPlan          @relation(fields: [auditPlanId], references: [id], onDelete: Cascade)
-  correctiveAction CorrectiveAction?
-  evidenceRecords  EvidenceRecord[]
-}
-
-model CorrectiveAction {
-  id                    String    @id @default(cuid())
-  source                String    @default("AUDIT") // AUDIT | INCIDENT | COMPLAINT | OTHER
-  auditFindingId        String?   @unique
-  incidentId            String?
-  title                 String
-  rootCause             String?
-  actionPlan            String?
-  responsibleId         String?
-  dueDate               DateTime?
-  implementedAt         DateTime?
-  implementNote         String?
-  verifiedAt            DateTime?
-  verifiedById          String?
-  verifyNote            String?
-  horizontalDeployment  String?
-  approvedById          String?
-  approvedAt            DateTime?
-  status                String    @default("OPEN") // OPEN | IN_PROGRESS | IMPLEMENTED | VERIFIED | CLOSED
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  auditFinding    AuditFinding?    @relation(fields: [auditFindingId], references: [id])
-  incident        IncidentCase?    @relation(fields: [incidentId], references: [id])
-  responsible     User?            @relation("CorrectiveResponsible", fields: [responsibleId], references: [id])
-  verifiedBy      User?            @relation("CorrectiveVerifier", fields: [verifiedById], references: [id])
-  approvedBy      User?            @relation("CorrectiveApprover", fields: [approvedById], references: [id])
-  evidenceRecords EvidenceRecord[]
-
-  @@index([auditFindingId])
-  @@index([incidentId])
-  @@index([responsibleId])
-}
-
-// ════════════════════════════════════════════════════════════════════
-// M-08 事故対応
-// ════════════════════════════════════════════════════════════════════
-
-model IncidentCase {
-  id               String    @id @default(cuid())
-  organizationId   String
-  reportedById     String?
-  assignedToId     String?
-  title            String
-  description      String
-  incidentDate     DateTime?
-  discoveredDate   DateTime?
-  category         String    @default("LEAKAGE") // LEAKAGE | LOSS | DAMAGE | UNAUTHORIZED_ACCESS | MISDIRECTION | THEFT | OTHER
-  severity         String    @default("UNASSESSED") // UNASSESSED | LOW | MEDIUM | HIGH | CRITICAL
-  affectedCount    Int?
-  affectedScope    String?
-  dataTypes        String?   // JSON
-  containsSensitive Boolean  @default(false)
-  containsMyNumber  Boolean  @default(false)
-
-  // 法定報告管理
-  requiresSpeedReport Boolean   @default(false)
-  speedReportDeadline DateTime?
-  speedReportedAt     DateTime?
-  requiresFullReport  Boolean   @default(false)
-  fullReportDeadline  DateTime?
-  fullReportedAt      DateTime?
-  requiresNotification Boolean  @default(false)
-  notifiedAt          DateTime?
-  reportedToPPC       Boolean   @default(false)
-  reportedToJIPDEC    Boolean   @default(false)
-
-  status           String    @default("REPORTED") // REPORTED | ASSESSING | RESPONDING | CORRECTING | CLOSED
-  closedAt         DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  organization      Organization       @relation(fields: [organizationId], references: [id])
-  reportedBy        User?              @relation("IncidentReporter", fields: [reportedById], references: [id])
-  assignedTo        User?              @relation("IncidentAssignee", fields: [assignedToId], references: [id])
-  actions           IncidentAction[]
-  correctiveActions CorrectiveAction[]
-  evidenceRecords   EvidenceRecord[]
-
-  @@index([organizationId])
-}
-
-model IncidentAction {
-  id             String    @id @default(cuid())
-  incidentId     String
-  actionType     String    // INITIAL_RESPONSE | SPEED_REPORT | NOTIFICATION | INVESTIGATION | FULL_REPORT | PREVENTION | OTHER
-  title          String
-  description    String?
-  performedById  String?
-  performedAt    DateTime?
-  dueDate        DateTime?
-  status         String    @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  incident    IncidentCase @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  performedBy User?        @relation("IncidentActionPerformer", fields: [performedById], references: [id])
-}
-
-// ════════════════════════════════════════════════════════════════════
-// M-09 申請・更新管理
-// ════════════════════════════════════════════════════════════════════
-
-model ApplicationPackage {
-  id               String    @id @default(cuid())
-  organizationId   String
-  applicationType  String    @default("RENEWAL") // NEW | RENEWAL
-  fiscalYear       Int
-  snapshotDate     DateTime?
-  pmarkNumber      String?
-  currentExpiry    DateTime?
-  certifyingBody   String?
-  createdById      String?
-  approvedById     String?
+  companyId        String
+  type             String    // personal_info_registry | risk_analysis | business_process_list
+  version          Int       @default(1)
+  filePath         String    // S3 key or local path
+  fileFormat       String    // xlsx | docx | csv
+  summary          String?
+  confirmedCount   Int       @default(0)
+  estimatedCount   Int       @default(0)
+  unconfirmedCount Int       @default(0)
+  totalFields      Int       @default(0)
+  generatedAt      DateTime  @default(now())
+  approvedBy       String?
   approvedAt       DateTime?
-  status           String    @default("DRAFT") // DRAFT | GENERATING | READY | REVIEWING | APPROVED | SUBMITTED
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
 
-  organization Organization             @relation(fields: [organizationId], references: [id])
-  createdBy    User?                    @relation("AppPackageCreator", fields: [createdById], references: [id])
-  approvedBy   User?                    @relation("AppPackageApprover", fields: [approvedById], references: [id])
-  items        ApplicationPackageItem[]
-  changeReports ChangeReport[]
-
-  @@index([organizationId])
-}
-
-model ApplicationPackageItem {
-  id           String    @id @default(cuid())
-  packageId    String
-  itemType     String    // REGISTER_EXPORT | RISK_REPORT | TRAINING_SUMMARY | AUDIT_SUMMARY | REVIEW_SUMMARY | DOCUMENT_LIST | CHANGE_REPORT | OTHER
-  title        String
-  filePath     String?
-  fileName     String?
-  fileSize     Int?
-  sourceDataIds String?  // JSON
-  status       String    @default("PENDING") // PENDING | GENERATING | GENERATED | ERROR
-  errorMessage String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  package ApplicationPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
-}
-
-model ChangeReport {
-  id              String    @id @default(cuid())
-  packageId       String
-  changeCategory  String    // ORGANIZATION | BUSINESS | REGISTER | RISK | DOCUMENT | PERSONNEL | SYSTEM
-  changeTitle     String
-  changeDetail    String?
-  aiSummary       String?
-  previousValue   String?
-  currentValue    String?
-  changedAt       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  package ApplicationPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 
 // ════════════════════════════════════════════════════════════════════
-// M-11 マネジメントレビュー
+// FieldChangeLog (フィールド変更履歴)
 // ════════════════════════════════════════════════════════════════════
 
-model ManagementReview {
-  id              String    @id @default(cuid())
-  organizationId  String
-  fiscalYear      Int
-  reviewDate      DateTime?
-  chairpersonId   String?
+model FieldChangeLog {
+  id        String   @id @default(cuid())
+  bpPiiId   String
+  fieldName String
+  oldValue  String?
+  newValue  String?
+  oldStatus String?
+  newStatus String?
+  changedBy String   // agent | human:名前
+  trigger   String   // discovery | question_answer | manual_edit | re_discovery
+  changedAt DateTime @default(now())
 
-  // 各モジュールサマリー（JSON）
-  riskSummary            String?
-  trainingSummary        String?
-  vendorSummary          String?
-  auditSummary           String?
-  incidentSummary        String?
-  correctiveActionSummary String?
-
-  // 外部・内部課題
-  externalIssues       String?
-  internalIssues       String?
-  stakeholderFeedback  String?
-
-  // 議事録
-  minutes              String?
-
-  status          String    @default("DRAFT") // DRAFT | PREPARED | IN_REVIEW | APPROVED | LOCKED
-  approvedById    String?
-  approvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  organization  Organization                    @relation(fields: [organizationId], references: [id])
-  chairperson   User?                           @relation("ReviewChairperson", fields: [chairpersonId], references: [id])
-  approvedBy    User?                           @relation("ReviewApprover", fields: [approvedById], references: [id])
-  agendas       ManagementReviewAgenda[]
-  decisions     ManagementReviewDecision[]
-  participants  ManagementReviewParticipant[]
-
-  @@index([organizationId])
-}
-
-model ManagementReviewAgenda {
-  id           String @id @default(cuid())
-  reviewId     String
-  agendaNumber Int
-  title        String
-  description  String?
-  sortOrder    Int    @default(0)
-  createdAt    DateTime @default(now())
-
-  review ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-}
-
-model ManagementReviewDecision {
-  id                      String    @id @default(cuid())
-  reviewId                String
-  decisionTitle           String
-  decisionDetail          String?
-  improvementInstructions String?
-  responsibleId           String?
-  dueDate                 DateTime?
-  status                  String    @default("OPEN") // OPEN | IN_PROGRESS | COMPLETED | CARRIED_FORWARD
-  followUpNotes           String?
-  completedAt             DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-
-  review      ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  responsible User?            @relation("ReviewDecisionResponsible", fields: [responsibleId], references: [id])
-}
-
-model ManagementReviewParticipant {
-  id                    String   @id @default(cuid())
-  reviewId              String
-  userId                String
-  role                  String   @default("ATTENDEE") // CHAIRPERSON | ATTENDEE
-  attendanceConfirmed   Boolean  @default(false)
-  createdAt             DateTime @default(now())
-
-  review ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  user   User             @relation(fields: [userId], references: [id])
-
-  @@unique([reviewId, userId])
+  bpPii BusinessProcessPII @relation(fields: [bpPiiId], references: [id], onDelete: Cascade)
 }
 
 // ════════════════════════════════════════════════════════════════════
-// マスタ・ログ
+// AgentSession (エージェントセッション)
 // ════════════════════════════════════════════════════════════════════
 
-model LegalRequirement {
-  id          String    @id @default(cuid())
-  name        String
-  description String
-  category    String
-  source      String
-  effectiveAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
+model AgentSession {
+  id                  String   @id @default(cuid())
+  companyId           String
+  anthropicSessionId  String?  @unique
+  status              String   @default("running") // running | idle | waiting_for_answers | completed
+  phase               String   @default("discovery") // discovery | gap_analysis | drafting | review
+  webAccessLog        String   @default("[]") // JSON array of {url, method, timestamp}
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-model DataCategory {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique
-  description String?
-  isSensitive Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model DataFieldDefinition {
-  id               String   @id @default(cuid())
-  name             String
-  code             String   @unique
-  description      String?
-  categoryHint     String?
-  isSensitive      Boolean  @default(false)
-  isSpecificPerson Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
-
-model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String?
-  action     String
-  entityType String
-  entityId   String?
-  details    String?
-  ipAddress  String?
-  createdAt  DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([createdAt])
-  @@index([entityType, entityId])
-}
-
-model AiUsageLog {
-  id           String   @id @default(cuid())
-  userId       String?
-  feature      String
-  inputTokens  Int?
-  outputTokens Int?
-  durationMs   Int?
-  createdAt    DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id])
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questions Question[]
 }

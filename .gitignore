@@ -63,5 +63,6 @@ prisma/test-connection.cjs
 prisma/test.db
 prisma/test.db-journal
 
-# scripts (report generation)
-scripts/
+# scripts (keep setup-agent.ts)
+scripts/*.pdf
+scripts/*.xlsx

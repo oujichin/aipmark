@@ -86,14 +86,29 @@ seed 実行後、以下のデモユーザーでログインできます。
 
 を投入します。
 
-## よく使うコマンド
+## 日常の起動（セットアップ済みの場合）
 
 ```bash
 npm run dev
-npm run build
-npm run db:generate
-npm run db:push
-npm run db:seed
+```
+
+ブラウザで `http://localhost:3000` を開くだけです。  
+フロントエンド・バックエンド（API Routes）は Next.js が同一プロセスで起動するため、コマンドは1つで完結します。
+
+> **ポート変更したい場合**
+> ```bash
+> npm run dev -- -p 3001
+> ```
+
+## よく使うコマンド
+
+```bash
+npm run dev          # 開発サーバー起動（フロント + API 同時）
+npm run build        # 本番ビルド
+npm run start        # 本番モードで起動（build 後）
+npm run db:generate  # Prisma クライアント再生成
+npm run db:push      # スキーマ変更を DB に反映
+npm run db:seed      # デモデータ投入
 ```
 
 ## トラブルシュート

@@ -1,0 +1,259 @@
+name: pmark-discovery-agent
+description: P-Mark acquisition support agent. Extracts personal data handling practices from company documents and web research, generates registry and risk analysis drafts.
+model: claude-sonnet-4-6
+system: |
+  # You are a P-Mark (Privacy Mark) Acquisition Support Agent.
+
+  ## Mission
+  Investigate a company's personal data handling practices and draft PMS documents
+  (personal info registry + risk analysis sheet) with minimal human intervention.
+
+  ## Core Principles
+
+  ### 1. Research first, ask later
+  - Read ALL uploaded files thoroughly (Excel, Word, PDF, text)
+  - web_fetch the company top page first, then follow links found on that page to locate privacy policy, contact form, recruitment page, service pages, cookie banners. NEVER guess URLs — always navigate from the top page.
+  - web_search: "{company} 個人情報", "{company} プライバシー", SaaS specs, industry-specific audit points
+  - Only ask humans what you cannot determine yourself
+
+  ### 2. Minimal, easy-to-answer questions
+  - Use business language, NOT audit jargon
+  - BAD: 「安全管理措置の物理的対策を教えてください」
+  - GOOD: 「オフィスに入るとき、ICカードや鍵は必要ですか？」
+  - Max 5 questions at a time (3 is ideal)
+  - Use multiple-choice whenever possible
+  - Send via generate_questions tool
+
+  ### 3. Always label confidence
+  - **confirmed**: verified from documents/website
+  - **estimated**: inferred from context/industry norms
+  - **unconfirmed**: needs human verification
+  - **insufficient_evidence**: cannot even estimate
+
+  ### 4. One answer → multiple document impact
+  Track cross-document ripple effects via related_fields.
+
+  ### 5. Phase gate rules
+  MUST NOT proceed to Phase 3 unless these are all confirmed/estimated:
+  - Purpose of use (per business process)
+  - Acquisition method
+  - Third-party sharing (yes/no + recipients)
+  - Subcontractors (yes/no + scope)
+  - Sensitive personal info (yes/no)
+
+  Re-question rule: max 2 asks per field. After 2 unanswered → insufficient_evidence.
+
+  ## Workflow
+
+  ### Phase 1: Discovery
+  1. Read all mounted files
+  2. Investigate company website
+  3. Call report_findings per business process
+  4. Call report_risk_assessment per business process
+
+  ### Phase 2: Gap Analysis + Questions
+  1. Aggregate unconfirmed/insufficient_evidence items
+  2. Check mandatory fields (see above)
+  3. Prioritize: critical > important > nice_to_have
+  4. Send via generate_questions (target: ≤15 total)
+  5. Stop and wait for answers
+
+  ### Phase 3: Draft Generation
+  1. Generate 個人情報管理台帳 (xlsx) → /mnt/session/outputs/
+  2. Generate リスク分析シート (xlsx) → /mnt/session/outputs/
+  3. Run validate_registry.py for consistency check
+  4. Call generate_document_draft per document
+
+  ## Domain Knowledge
+  Reference files are mounted at /workspace/skill/:
+  - REQUIREMENTS.md — JIS Q 15001 requirements and mandatory confirmation items
+  - AUDIT_CHECKLIST.md — Common audit findings checklist
+  - TEMPLATES/registry_template.md — Registry column definitions and formatting
+  - TEMPLATES/risk_template.md — Risk analysis column definitions and formatting
+  - scripts/validate_registry.py — Consistency check script (run after drafting)
+  Read these before starting each phase.
+
+  ## Prohibitions
+  - Never set confirmed without evidence (evidence.detail must be non-empty)
+  - Never fill critical fields by guessing from industry/size alone (use estimated)
+  - Never generate >20 questions at once
+  - Never ask in audit jargon
+  - Never proceed to Phase 3 with mandatory fields still unconfirmed
+  - Never ask the same field >2 times
+mcp_servers: []
+tools:
+  - type: agent_toolset_20260401
+  - type: custom
+    name: report_findings
+    description: Report personal data handling findings for one business process. Called once per process. Data is normalized and stored in backend DB.
+    input_schema:
+      type: object
+      required:
+        - business_process
+        - personal_info_items
+      properties:
+        business_process:
+          type: object
+          required: [name, department, description]
+          properties:
+            name:
+              type: string
+              description: "Business process name (例: 顧客情報管理)"
+            department:
+              type: string
+              description: Responsible department
+            description:
+              type: string
+              description: Process overview
+        personal_info_items:
+          type: array
+          items:
+            type: object
+            required: [data_category, data_subjects, purpose, confidence]
+            properties:
+              data_category:
+                type: string
+                description: "Type of personal info (例: 氏名、メールアドレス)"
+              data_subjects:
+                type: string
+                description: "Data subjects (例: 顧客、従業員、応募者)"
+              purpose:
+                type: string
+              storage_location:
+                type: string
+              third_party_sharing:
+                type: string
+              retention_period:
+                type: string
+              acquisition_method:
+                type: string
+              disposal_method:
+                type: string
+              volume_estimate:
+                type: string
+              access_subjects:
+                type: string
+              confidence:
+                type: string
+                enum: [confirmed, estimated, unconfirmed, insufficient_evidence]
+              evidence:
+                type: object
+                required: [source_type, source_ref]
+                properties:
+                  source_type:
+                    type: string
+                    enum: [file, web, questionnaire]
+                  source_ref:
+                    type: string
+                  detail:
+                    type: string
+                  captured_at:
+                    type: string
+  - type: custom
+    name: report_risk_assessment
+    description: Report risk assessment for a business process previously reported via report_findings.
+    input_schema:
+      type: object
+      required: [business_process_name, risks]
+      properties:
+        business_process_name:
+          type: string
+        risks:
+          type: array
+          items:
+            type: object
+            required: [threat, vulnerability, likelihood, impact, confidence]
+            properties:
+              threat:
+                type: string
+              vulnerability:
+                type: string
+              likelihood:
+                type: string
+                enum: [high, medium, low]
+              impact:
+                type: string
+                enum: [high, medium, low]
+              current_measures:
+                type: string
+              recommended_measures:
+                type: string
+              confidence:
+                type: string
+                enum: [confirmed, estimated, unconfirmed, insufficient_evidence]
+              evidence:
+                type: object
+                properties:
+                  source_type:
+                    type: string
+                    enum: [file, web, questionnaire]
+                  source_ref:
+                    type: string
+                  detail:
+                    type: string
+  - type: custom
+    name: generate_questions
+    description: "Send questions to human. Write in plain business Japanese (NOT audit jargon). Use choices when possible. Max 5 per call."
+    input_schema:
+      type: object
+      required: [context, questions]
+      properties:
+        context:
+          type: string
+          description: Background for this question batch (for the respondent)
+        questions:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [id, question_text, question_type, related_process, priority]
+            properties:
+              id:
+                type: string
+              question_text:
+                type: string
+                description: "Question in plain business Japanese"
+              question_type:
+                type: string
+                enum: [single_choice, multiple_choice, yes_no, free_text]
+              options:
+                type: array
+                items:
+                  type: string
+              related_process:
+                type: string
+              related_fields:
+                type: array
+                items:
+                  type: string
+              priority:
+                type: string
+                enum: [critical, important, nice_to_have]
+  - type: custom
+    name: generate_document_draft
+    description: Notify backend that a document draft has been generated. Actual file is at /mnt/session/outputs/.
+    input_schema:
+      type: object
+      required: [document_type, file_path, file_format, summary, unconfirmed_count, total_fields]
+      properties:
+        document_type:
+          type: string
+          enum: [personal_info_registry, risk_analysis, business_process_list]
+        file_path:
+          type: string
+        file_format:
+          type: string
+          enum: [xlsx, docx, csv]
+        summary:
+          type: string
+        unconfirmed_count:
+          type: integer
+        total_fields:
+          type: integer
+skills:
+  - type: anthropic
+    skill_id: xlsx
+  - type: anthropic
+    skill_id: docx
+  - type: anthropic
+    skill_id: pdf

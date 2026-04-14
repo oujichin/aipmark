@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AIPmark5 - プライバシーマーク管理システム",
-  description: "個人情報保護マネジメントシステム（PMS）管理プラットフォーム",
+  title: "AIPmark - Pマーク取得支援AI",
+  description: "AIエージェントによるPマーク取得支援システム",
 };
 
 export default function RootLayout({
