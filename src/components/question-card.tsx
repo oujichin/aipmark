@@ -14,7 +14,7 @@ interface Question {
 
 interface Props {
   question: Question;
-  onAnswered: () => void;
+  onAnswered: (info?: { agentDeliveryError?: string | null }) => void;
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -28,23 +28,31 @@ export function QuestionCard({ question, onAnswered }: Props) {
   const [selectedOption, setSelectedOption] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const options: string[] = question.options ? JSON.parse(question.options) : [];
+  const options = parseOptions(question);
   const isChoice = question.questionType === "single_choice" || question.questionType === "yes_no";
   const isMulti = question.questionType === "multiple_choice";
+  const shouldShowFreeText = question.questionType === "free_text" || ((isChoice || isMulti) && options.length === 0);
 
   async function handleSubmit() {
-    const value = isChoice || isMulti ? selectedOption : answer;
+    const value = (isChoice || isMulti) && selectedOption ? selectedOption : answer;
     if (!value) return;
     setSubmitting(true);
 
-    await fetch(`/api/questions/${question.id}`, {
+    const res = await fetch(`/api/questions/${question.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ answer: value }),
     });
+    let agentDeliveryError: string | null = null;
+    try {
+      const json = await res.json();
+      agentDeliveryError = json?.agentDeliveryError ?? null;
+    } catch {
+      // レスポンスがJSONでない場合は無視
+    }
 
     setSubmitting(false);
-    onAnswered();
+    onAnswered({ agentDeliveryError });
   }
 
   return (
@@ -96,7 +104,7 @@ export function QuestionCard({ question, onAnswered }: Props) {
         </div>
       )}
 
-      {question.questionType === "free_text" && (
+      {shouldShowFreeText && (
         <textarea
           value={answer}
           onChange={e => setAnswer(e.target.value)}
@@ -115,4 +123,27 @@ export function QuestionCard({ question, onAnswered }: Props) {
       </button>
     </div>
   );
+}
+
+function parseOptions(question: Question) {
+  if (question.questionType === "yes_no" && !question.options) {
+    return ["はい", "いいえ", "不明・案件による"];
+  }
+
+  if (!question.options) return [];
+
+  try {
+    const parsed = JSON.parse(question.options);
+    if (Array.isArray(parsed)) {
+      const options = parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+      if (question.questionType === "yes_no" && options.length === 0) {
+        return ["はい", "いいえ", "不明・案件による"];
+      }
+      return options;
+    }
+  } catch {
+    // 壊れたoptionsでも回答欄を消さない
+  }
+
+  return question.questionType === "yes_no" ? ["はい", "いいえ", "不明・案件による"] : [];
 }

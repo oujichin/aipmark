@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
@@ -20,6 +21,7 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  companyProfile    CompanyProfile?
   businessProcesses BusinessProcess[]
   personalInfoItems PersonalInfoItem[]
   dataSubjects      DataSubject[]
@@ -30,12 +32,47 @@ model Company {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// CompanyProfile (企業基本情報 — Phase 0 で生成)
+// ════════════════════════════════════════════════════════════════════
+
+model CompanyProfile {
+  id                  String   @id @default(cuid())
+  companyId           String   @unique
+  representative      String?
+  address             String?
+  established         String?
+  businessDescription String?
+  employeesTotal      Int?
+  employeesFullTime   Int?
+  employeesContract   Int?
+  employeesPartTime   Int?
+  employeesTemporary  Int?
+  locations           String   @default("[]") // JSON array of {name, address}
+  groupCompanies      String   @default("[]") // JSON array of strings
+  mainServices        String   @default("[]") // JSON array of strings
+
+  // フィールド単位の確信度
+  representativeStatus      String @default("unconfirmed")
+  addressStatus             String @default("unconfirmed")
+  establishedStatus         String @default("unconfirmed")
+  businessDescriptionStatus String @default("unconfirmed")
+  employeesStatus           String @default("unconfirmed")
+  locationsStatus           String @default("unconfirmed")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+// ════════════════════════════════════════════════════════════════════
 // BusinessProcess (業務プロセス)
 // ════════════════════════════════════════════════════════════════════
 
 model BusinessProcess {
   id          String   @id @default(cuid())
   companyId   String
+  parentId    String?  // ネスト対応: 親業務のID
   name        String
   department  String?
   description String?
@@ -44,7 +81,10 @@ model BusinessProcess {
   updatedAt   DateTime @updatedAt
 
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent    BusinessProcess?  @relation("BusinessProcessNesting", fields: [parentId], references: [id])
+  children  BusinessProcess[] @relation("BusinessProcessNesting")
   bpPiis    BusinessProcessPII[]
+  chatMessages ChatMessage[]
 
   @@unique([companyId, name])
 }
@@ -137,6 +177,18 @@ model BusinessProcessPII {
   disposalMethod      String?
   volumeEstimate      String?
 
+  // v1.2 追加カラム
+  category            String?  // 分類（採用情報、顧客情報、従業員情報等）
+  infoName            String?  // 個人情報名（台帳の表示名）
+  classification      String?  // 類型（K1, K2, D1, D2）
+  mediaType           String?  // 記録媒体（data, paper, both）
+  storageMethod       String?  // 保管方法（施錠管理、アクセス制限等）
+  usagePeriod         String?  // 利用期間
+  disclosureTarget    Boolean? // 開示対象フラグ
+  manager             String?  // 管理者名
+  accessiblePersons   String?  // アクセス可能者
+  remarks             String?  // 備考
+
   // フィールド単位の確信度ステータス
   purposeStatus           String @default("unconfirmed")
   acquisitionMethodStatus String @default("unconfirmed")
@@ -146,6 +198,16 @@ model BusinessProcessPII {
   disposalMethodStatus    String @default("unconfirmed")
   volumeEstimateStatus    String @default("unconfirmed")
   thirdPartyStatus        String @default("unconfirmed")
+  // v1.2 追加ステータス
+  categoryStatus          String @default("unconfirmed")
+  infoNameStatus          String @default("unconfirmed")
+  classificationStatus    String @default("unconfirmed")
+  mediaTypeStatus         String @default("unconfirmed")
+  storageMethodStatus     String @default("unconfirmed")
+  usagePeriodStatus       String @default("unconfirmed")
+  disclosureTargetStatus  String @default("unconfirmed")
+  managerStatus           String @default("unconfirmed")
+  accessiblePersonsStatus String @default("unconfirmed")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -222,20 +284,21 @@ model RiskAssessment {
 // ════════════════════════════════════════════════════════════════════
 
 model Question {
-  id             String   @id @default(cuid())
-  sessionId      String
-  questionText   String
-  questionType   String   // single_choice | multiple_choice | yes_no | free_text
-  options        String?  // JSON array
-  relatedFields  String?  // JSON array of field names
-  priority       String   // critical | important | nice_to_have
-  context        String?
-  status         String   @default("pending") // pending | answered | skipped | escalated
-  answer         String?
-  answeredAt     DateTime?
-  answeredBy     String?
-  askCount       Int      @default(1)
-  createdAt      DateTime @default(now())
+  id              String   @id @default(cuid())
+  sessionId       String
+  questionText    String
+  questionType    String   // single_choice | multiple_choice | yes_no | free_text
+  options         String?  // JSON array
+  relatedProcess  String?  // 関連する業務プロセス名
+  relatedFields   String?  // JSON array of field names
+  priority        String   // critical | important | nice_to_have
+  context         String?
+  status          String   @default("pending") // pending | answered | skipped | escalated
+  answer          String?
+  answeredAt      DateTime?
+  answeredBy      String?
+  askCount        Int      @default(1)
+  createdAt       DateTime @default(now())
 
   session       AgentSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   bpPiiLinks    QuestionBpPii[]
@@ -304,11 +367,28 @@ model AgentSession {
   companyId           String
   anthropicSessionId  String?  @unique
   status              String   @default("running") // running | idle | waiting_for_answers | completed
-  phase               String   @default("discovery") // discovery | gap_analysis | drafting | review
+  phase               String   @default("phase0_company_profile") // phase0_company_profile | phase1_discovery | phase2_deep_dive | phase3_risk_pms | phase4_export | completed
   webAccessLog        String   @default("[]") // JSON array of {url, method, timestamp}
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  questions Question[]
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  chatMessages ChatMessage[]
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ChatMessage (業務別AIチャット履歴)
+// ════════════════════════════════════════════════════════════════════
+
+model ChatMessage {
+  id                String   @id @default(cuid())
+  sessionId         String
+  businessProcessId String?  // null = 会社全体に関する対話
+  role              String   // user | assistant
+  content           String
+  createdAt         DateTime @default(now())
+
+  session         AgentSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  businessProcess BusinessProcess? @relation(fields: [businessProcessId], references: [id], onDelete: Cascade)
 }

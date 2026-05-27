@@ -1,29 +1,33 @@
 # AIPmark5
 
-プライバシーマーク運用を支援する Next.js ベースのデモ/MVP アプリケーションです。  
-ローカル PC 上で SQLite を使って単体起動できます。
+プライバシーマーク（Pマーク）新規取得を支援する Next.js ベースの MVP アプリケーションです。
+Anthropic Managed Agents（claude-sonnet-4-6）が、企業ホームページの調査・アップロード資料の読込み・ユーザーへの質問を通して、個人情報台帳とリスク分析表の草案を作成します。
+
+ローカル PC 上で SQLite を使って単体起動できます（認証なし／シングルユーザー前提）。
 
 ## 動作環境
 
 - Node.js 20 以上推奨
 - npm
+- Anthropic API キー（Managed Agents が利用できるアカウント）
 
 ## セットアップ
 
 1. リポジトリを clone
 2. 依存関係をインストール
-3. 環境変数ファイルを作成
+3. `.env` を作成し `ANTHROPIC_API_KEY` を設定
 4. Prisma でローカル DB を作成
-5. seed データを投入
+5. Managed Agent と Environment をセットアップ（`PMARK_AGENT_ID` / `PMARK_ENV_ID` を `.env` に書き込み）
 6. 開発サーバーを起動
 
 ```bash
 git clone https://github.com/oujichin/aipmark.git
 cd aipmark
 npm install
-cp .env.example .env.local
-npx prisma db push
-npm run db:seed
+cp .env.example .env
+# .env を編集して ANTHROPIC_API_KEY を設定
+npx prisma migrate deploy
+npx tsx scripts/setup-agent.ts
 npm run dev
 ```
 
@@ -32,59 +36,51 @@ npm run dev
 Windows PowerShell の場合は `cp` の代わりに次を使ってください。
 
 ```powershell
-Copy-Item .env.example .env.local
+Copy-Item .env.example .env
 ```
 
 ## 環境変数
 
-`.env.local` には少なくとも次の値を設定してください。
+`.env` には次の値を設定してください。
 
 ```env
 DATABASE_URL="file:./prisma/dev.db"
-NEXTAUTH_SECRET="replace-with-a-random-secret"
-NEXTAUTH_URL="http://localhost:3000"
-GOOGLE_API_KEY="your-google-api-key"
+ANTHROPIC_API_KEY="sk-ant-..."
+PMARK_AGENT_ID=""   # setup-agent.ts 実行後に自動で書き込まれます
+PMARK_ENV_ID=""     # setup-agent.ts 実行後に自動で書き込まれます
 ```
 
-補足:
+`scripts/setup-agent.ts` を実行すると、Anthropic API 上に Agent 定義と Environment を作成し、その ID を `.env` に追記します。`PMARK_AGENT_ID` / `PMARK_ENV_ID` が未設定だと、セッションを開始しても Agent が起動しません。
 
-- `NEXTAUTH_SECRET` は任意のランダム文字列に置き換えてください
-- `GOOGLE_API_KEY` を設定しないと AI 機能は使えません
-- AI 機能を使わない画面でも、ログインと基本的な台帳操作のために DB 初期化は必要です
+## 使い方
 
-## デモログイン
-
-seed 実行後、以下のデモユーザーでログインできます。
-
-| 名前 | メールアドレス | パスワード | ロール |
-| --- | --- | --- | --- |
-| 田中 花子 | tanaka@demo.jp | demo1234 | 個人情報管理者 |
-| 鈴木 一郎 | suzuki@demo.jp | demo1234 | 部門担当者 |
-| 佐藤 社長 | sato@demo.jp | demo1234 | トップマネジメント |
+1. トップページ（`http://localhost:3000`）で対象企業名と URL を入力
+2. （任意）会社固有の資料（規程・台帳・契約書など）をアップロード
+3. （任意）参照テンプレートフォルダのパスを指定（既定は `templates/pmark`）
+4. 「開始」を押すと Agent セッションが作成され、ダッシュボードに遷移
+5. ダッシュボードで Agent からの質問に回答しつつ、台帳・リスク分析表が埋まっていく様子を確認
 
 ## 主な技術構成
 
-- Next.js 15
-- React 19
-- TypeScript
-- Prisma
-- SQLite
-- NextAuth
-- Gemini API
+- Next.js 15 / React 19 / TypeScript
+- Prisma + SQLite
+- Tailwind CSS v4
+- Anthropic Managed Agents（`@anthropic-ai/sdk` v0.88）
+- Zod
+- Vitest（単体テスト）
 
-## 初回起動でやっていること
+## ディレクトリ概要
 
-`npx prisma db push`
-
-- Prisma スキーマから SQLite のローカル DB を作成します
-
-`npm run db:seed`
-
-- 組織、部門、デモユーザー、業務プロセス、台帳サンプル
-- 個人情報区分マスタ
-- 個人情報項目マスタ
-
-を投入します。
+- `src/app/` — Next.js App Router（トップ、`/dashboard`、`/api/*`）
+- `src/app/api/sessions/` — セッション作成・チャット・ストリーム・エクスポート API
+- `src/app/api/agent-callback/` — Managed Agent からの Webhook 受け口
+- `src/lib/session-orchestrator.ts` — Agent セッション管理・イベント処理の中核
+- `prisma/schema.prisma` — `Company` / `BusinessProcess` / `Question` / `AgentSession` / `ChatMessage` ほか
+- `prisma/migrations/` — マイグレーション履歴
+- `scripts/setup-agent.ts` — Managed Agent と Environment を作成するスクリプト
+- `scripts/pmark-agent.yaml` — Agent のシステムプロンプト・ツール定義
+- `templates/pmark/` — Agent が `template_path` として参照する PMS テンプレートライブラリ
+- `uploads/` — ユーザーアップロード資料の保存先（git 管理外）
 
 ## 日常の起動（セットアップ済みの場合）
 
@@ -92,8 +88,7 @@ seed 実行後、以下のデモユーザーでログインできます。
 npm run dev
 ```
 
-ブラウザで `http://localhost:3000` を開くだけです。  
-フロントエンド・バックエンド（API Routes）は Next.js が同一プロセスで起動するため、コマンドは1つで完結します。
+ブラウザで `http://localhost:3000` を開くだけです。フロントエンド・バックエンド（API Routes）は Next.js が同一プロセスで起動します。
 
 > **ポート変更したい場合**
 > ```bash
@@ -106,35 +101,35 @@ npm run dev
 npm run dev          # 開発サーバー起動（フロント + API 同時）
 npm run build        # 本番ビルド
 npm run start        # 本番モードで起動（build 後）
+npm run typecheck    # TypeScript 型チェック
+npm run test         # Vitest 実行（1 回）
+npm run test:watch   # Vitest watch モード
 npm run db:generate  # Prisma クライアント再生成
-npm run db:push      # スキーマ変更を DB に反映
-npm run db:seed      # デモデータ投入
+npm run db:migrate   # マイグレーションを作成して反映（開発用）
+npm run db:push      # スキーマ変更を DB に反映（マイグレーション無しで強制反映）
 ```
 
 ## トラブルシュート
 
-### ログインできない
+### セッション開始後に Agent が動かない
 
-- `.env.local` の `NEXTAUTH_SECRET` と `NEXTAUTH_URL` を確認してください
-- `npm run db:seed` が完了しているか確認してください
+- `.env` の `ANTHROPIC_API_KEY` / `PMARK_AGENT_ID` / `PMARK_ENV_ID` を確認してください
+- `npx tsx scripts/setup-agent.ts` を実行済みか確認してください
 
 ### 画面は開くがデータがない
 
-- `npx prisma db push`
-- `npm run db:seed`
+- `npx prisma migrate deploy`（または `npx prisma db push`）を実行してから `npm run dev` を再起動してください
+- DB ファイルは `prisma/prisma/dev.db` に作成されます
 
-を再実行してください。
+### マイグレーションエラー
 
-### AI 機能が失敗する
-
-- `GOOGLE_API_KEY` が正しく設定されているか確認してください
-- API キー未設定でも、AI 依存でない一部画面は動作します
+- `prisma/patch-prisma-node22.js` は Node.js 22 系での既知問題に対応するためのパッチです。Node.js 20 系で動かない場合は Node のバージョンを確認してください
 
 ## 公開対象に含めていないもの
 
 以下はリポジトリに含めていません。
 
-- `.env.local`
-- `.env`
+- `.env` / `.env.local`
 - ローカル SQLite 実 DB ファイル
+- `uploads/` 配下のアップロード資料
 - Claude Code / Codex 用のローカル指示ファイル

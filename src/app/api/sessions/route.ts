@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createDiscoverySession, startDiscovery } from "@/lib/session-orchestrator";
+import { importSourceDocuments } from "@/lib/source-documents";
 
 // POST /api/sessions — セッション作成 + Discovery開始
 export async function POST(request: NextRequest) {
@@ -8,6 +9,8 @@ export async function POST(request: NextRequest) {
   const { companyName, companyUrl, files } = body as {
     companyName: string;
     companyUrl: string;
+    sourceFolderPath?: string;
+    useSourceFolder?: boolean;
     files: { name: string; description: string; path: string }[];
   };
 
@@ -23,15 +26,24 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const importedTemplateFiles = body.useSourceFolder && body.sourceFolderPath
+    ? (await importSourceDocuments(body.sourceFolderPath)).map(file => ({
+        name: file.name,
+        description: file.description,
+        path: file.importedPath,
+      }))
+    : [];
+  const sessionFiles = [...(files ?? []), ...importedTemplateFiles];
+
   const sessionId = await createDiscoverySession(
     company.id,
     companyName,
     companyUrl ?? "",
-    files ?? []
+    sessionFiles
   );
 
   // バックグラウンドでDiscovery開始（SSEストリーム処理）
-  startDiscovery(sessionId, companyName, companyUrl ?? "", files ?? []).catch(err => {
+  startDiscovery(sessionId, companyName, companyUrl ?? "", sessionFiles).catch(err => {
     console.error("[Discovery Error]", err);
     // エラー時はDBのステータスを更新
     prisma.agentSession.update({
