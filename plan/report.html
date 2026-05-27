@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 20mm 18mm 25mm 18mm; }
+  body { font-family: "Meiryo", "Yu Gothic", sans-serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a; }
+  h1 { font-size: 20pt; text-align: center; margin-top: 60px; margin-bottom: 4px; color: #1b3a5c; }
+  .subtitle { text-align: center; font-size: 12pt; color: #555; margin-bottom: 40px; }
+  .meta-table { width: 50%; margin: 0 auto 50px auto; border-collapse: collapse; font-size: 10pt; }
+  .meta-table td { padding: 6px 14px; border: 1px solid #ccc; }
+  .meta-table td:first-child { background: #f0f4f8; font-weight: bold; width: 120px; }
+  h2 { font-size: 14pt; color: #1b3a5c; border-bottom: 2px solid #1b3a5c; padding-bottom: 4px; margin-top: 36px; }
+  h3 { font-size: 12pt; color: #2c5282; margin-top: 24px; }
+  h4 { font-size: 11pt; color: #333; margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px 0; font-size: 9.5pt; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #e8eef4; font-weight: bold; color: #1b3a5c; }
+  .pass { color: #16a34a; font-weight: bold; }
+  .fail { color: #dc2626; font-weight: bold; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt; font-weight: bold; margin-right: 4px; }
+  .tag-done { background: #dcfce7; color: #166534; }
+  .tag-new { background: #dbeafe; color: #1e40af; }
+  .tag-shell { background: #fef3c7; color: #92400e; }
+  .tag-approved { background: #dcfce7; color: #166534; font-size: 11pt; padding: 4px 16px; }
+  .tag-rejected { background: #fee2e2; color: #991b1b; font-size: 11pt; padding: 4px 16px; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  li { margin-bottom: 3px; }
+  .page-break { page-break-before: always; }
+  .toc { margin: 20px 0; }
+  .toc li { margin-bottom: 6px; list-style: none; }
+  .toc li::before { content: "■ "; color: #1b3a5c; }
+  .summary-box { background: #f0f7ff; border: 1px solid #b0c9e8; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
+  .highlight { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px 16px; margin: 12px 0; }
+  .footer { text-align: center; font-size: 8.5pt; color: #999; margin-top: 40px; border-top: 1px solid #ddd; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- 表紙 -->
+<div style="text-align:center; padding-top: 120px;">
+  <p style="font-size: 11pt; color: #888; margin-bottom: 8px;">AIPmark5 プロジェクト</p>
+  <h1 style="margin-top: 0;">要件定義 作業報告書</h1>
+  <p class="subtitle">未実装モジュール要件深堀・レビュー・承認プロセス報告</p>
+  <div style="margin-top: 80px;">
+    <table class="meta-table">
+      <tr><td>文書番号</td><td>AIPmark5-REQ-R001</td></tr>
+      <tr><td>作成日</td><td>2026年3月12日</td></tr>
+      <tr><td>プロジェクト</td><td>AIPmark5 — Pマーク運用支援システム</td></tr>
+      <tr><td>作業内容</td><td>未実装モジュール要件定義</td></tr>
+      <tr><td>最終判定</td><td><span class="tag tag-approved">APPROVED</span></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- 目次 -->
+<h2>目次</h2>
+<ul class="toc">
+  <li>1. エグゼクティブサマリー</li>
+  <li>2. プロジェクト概要</li>
+  <li>3. 作業プロセス</li>
+  <li>4. ラウンド1: 要件定義 → レビュー → 判定</li>
+  <li>5. ラウンド2: 修正 → 再レビュー → 最終承認</li>
+  <li>6. 要件定義の全体像</li>
+  <li>7. 成果物一覧</li>
+  <li>8. 推奨実装ロードマップ</li>
+  <li>9. リスクと注意事項</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- 1. エグゼクティブサマリー -->
+<h2>1. エグゼクティブサマリー</h2>
+
+<div class="summary-box">
+  <p><strong>AIPmark5</strong>（プライバシーマーク運用支援システム）の未実装モジュール全10件について、3つのAIエージェントによる反復的な要件定義プロセスを実施しました。</p>
+  <ul>
+    <li><strong>要件深堀エージェント</strong>が全モジュールの詳細要件を定義</li>
+    <li><strong>レビューエージェント</strong>がJIS Q 15001適合性・技術的整合性を厳格チェック</li>
+    <li><strong>最終承認エージェント</strong>が6つの必須基準で判定</li>
+  </ul>
+  <p>ラウンド1で<strong>REJECTED</strong>（重大指摘5件）、ラウンド2で全件修正し<strong>APPROVED</strong>を取得しました。</p>
+</div>
+
+<table>
+  <tr>
+    <th style="width:25%">項目</th>
+    <th>結果</th>
+  </tr>
+  <tr><td>対象モジュール数</td><td>10モジュール（M-03〜M-09, M-11, エビデンス, 事前調査）</td></tr>
+  <tr><td>定義テーブル数</td><td>約30テーブル（新規）+ 既存モデル拡張</td></tr>
+  <tr><td>定義APIエンドポイント数</td><td>約100エンドポイント</td></tr>
+  <tr><td>定義画面数</td><td>約50画面</td></tr>
+  <tr><td>AI連携機能数</td><td>約20機能</td></tr>
+  <tr><td>レビューラウンド数</td><td>2ラウンド（1回REJECTED → 修正 → APPROVED）</td></tr>
+  <tr><td>最終判定</td><td><span class="tag tag-approved">APPROVED</span>（必須6/6 PASS、推奨3/3 PASS）</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 2. プロジェクト概要 -->
+<h2>2. プロジェクト概要</h2>
+
+<h3>2.1 AIPmark5とは</h3>
+<p>プライバシーマーク（JIS Q 15001）運用を支援するNext.jsベースのWebアプリケーションです。「書類を作るシステム」ではなく、<strong>PMS運用そのものを回し、結果として申請書類・証跡・差分説明を出せるシステム</strong>という設計思想に基づいています。</p>
+
+<h3>2.2 技術スタック</h3>
+<table>
+  <tr><th>層</th><th>技術</th></tr>
+  <tr><td>フレームワーク</td><td>Next.js 15 (App Router) + React 19</td></tr>
+  <tr><td>言語</td><td>TypeScript</td></tr>
+  <tr><td>DB</td><td>SQLite + Prisma ORM</td></tr>
+  <tr><td>スタイル</td><td>Tailwind CSS v4（独自コンポーネント）</td></tr>
+  <tr><td>AI</td><td>Google Gemini 2.0 Flash</td></tr>
+  <tr><td>認証</td><td>NextAuth v4 (Credentials Provider)</td></tr>
+  <tr><td>Excel出力</td><td>ExcelJS</td></tr>
+</table>
+
+<h3>2.3 実装済み機能（作業開始時点）</h3>
+<table>
+  <tr><th>モジュール</th><th>状態</th><th>内容</th></tr>
+  <tr><td>基盤</td><td><span class="tag tag-done">完了</span></td><td>認証、レイアウト、デモユーザー3名</td></tr>
+  <tr><td>M-02 台帳管理</td><td><span class="tag tag-done">完了</span></td><td>業務プロセスCRUD、ヒアリング、台帳候補生成、承認フロー、Excel出力</td></tr>
+  <tr><td>M-10 AI支援</td><td><span class="tag tag-done">完了</span></td><td>Gemini連携、PIIマスキング、チャット、企業調査</td></tr>
+  <tr><td>ダッシュボード</td><td><span class="tag tag-done">完了</span></td><td>統計カード、進捗バー、活動ログ</td></tr>
+  <tr><td>M-03〜M-09</td><td><span class="tag tag-shell">シェルのみ</span></td><td>画面枠のみ、機能未実装</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 3. 作業プロセス -->
+<h2>3. 作業プロセス</h2>
+
+<h3>3.1 エージェント構成</h3>
+<p>品質を担保するため、役割の異なる3つのAIエージェントによる反復レビュープロセスを採用しました。</p>
+
+<table>
+  <tr><th>エージェント</th><th>役割</th><th>判定権限</th></tr>
+  <tr>
+    <td><strong>要件深堀エージェント</strong></td>
+    <td>未実装機能の要件を詳細に定義。JIS Q 15001条項、ユーザーストーリー、画面設計、データモデル、API設計、AI連携、ワークフローを網羅的に記述</td>
+    <td>なし（作成者）</td>
+  </tr>
+  <tr>
+    <td><strong>レビューエージェント</strong></td>
+    <td>要件定義書を8つの観点（JIS適合性、データモデル整合性、API設計、ユーザーストーリー網羅性、AI実現可能性、既存実装との一貫性、モジュール間依存、実装可能性）で厳格レビュー</td>
+    <td>評価（A/B/C/D）+ 承認推奨/非推奨</td>
+  </tr>
+  <tr>
+    <td><strong>最終承認エージェント</strong></td>
+    <td>6つの必須基準（JIS網羅性、データモデル完全性、API一貫性、重大指摘ゼロ、実装可能性、年次運用サイクル）で合否判定</td>
+    <td><strong>APPROVED / REJECTED</strong></td>
+  </tr>
+</table>
+
+<h3>3.2 プロセスフロー</h3>
+<div class="highlight">
+  要件深堀 → レビュー → 最終承認 → [REJECTEDなら修正して再ループ] → APPROVED
+</div>
+
+<div class="page-break"></div>
+
+<!-- 4. ラウンド1 -->
+<h2>4. ラウンド1: 要件定義 → レビュー → 判定</h2>
+
+<h3>4.1 要件深堀エージェントの成果</h3>
+<p>9モジュール（M-03〜M-09、エビデンスアップロード、事前調査プロファイル画面）について詳細要件を定義しました。</p>
+
+<h3>4.2 レビュー結果</h3>
+<table>
+  <tr><th>総合評価</th><td><strong>B</strong> — 高い完成度だが、修正必須の指摘あり</td></tr>
+</table>
+
+<h4>重大指摘（P0）— 5件</h4>
+<table>
+  <tr><th>ID</th><th>内容</th></tr>
+  <tr><td>CRI-01</td><td><strong>マネジメントレビューモジュール（M-11）の完全欠落</strong> — JIS Q 15001 J.4.6.3必須。画面・API・データモデルすべて未定義</td></tr>
+  <tr><td>CRI-02</td><td><strong>全新規モデルでOrganizationへの双方向リレーション未定義</strong> — Prismaスキーマとして不成立</td></tr>
+  <tr><td>CRI-03</td><td><strong>EvidenceRecord拡張で逆リレーション定義が欠落</strong></td></tr>
+  <tr><td>CRI-04</td><td><strong>RiskItem→RegisterItem/BusinessProcessの双方向リレーション未定義</strong></td></tr>
+  <tr><td>CRI-05</td><td><strong>CorrectiveAction→IncidentCaseの双方向リレーション未定義</strong></td></tr>
+</table>
+
+<h4>中程度指摘（P1）— 8件</h4>
+<ul>
+  <li>MED-01: AUDITORロールの権限設計不明確</li>
+  <li>MED-02: JSON型フィールドの多用（中間テーブル化推奨）</li>
+  <li>MED-03: fiscalYear型の不統一</li>
+  <li>MED-04/05/08: 本人対応・変更管理・第三者提供の未言及</li>
+  <li>MED-06: API部分更新仕様の未定義</li>
+  <li>MED-07: Userリレーション定義漏れ</li>
+</ul>
+
+<h3>4.3 最終承認判定</h3>
+<table>
+  <tr><th>判定</th><td><span class="tag tag-rejected">REJECTED</span></td></tr>
+  <tr><th>理由</th><td>必須基準6項目中4項目がFAIL</td></tr>
+</table>
+
+<table>
+  <tr><th>必須基準</th><th>判定</th></tr>
+  <tr><td>1. JIS Q 15001網羅性</td><td class="fail">FAIL（M-11欠落）</td></tr>
+  <tr><td>2. データモデル完全性</td><td class="fail">FAIL（リレーション不備）</td></tr>
+  <tr><td>3. API設計の一貫性</td><td class="pass">PASS（条件付き）</td></tr>
+  <tr><td>4. 重大指摘ゼロ</td><td class="fail">FAIL（5件未解消）</td></tr>
+  <tr><td>5. 実装可能性</td><td class="fail">FAIL（Prismaマイグレーション不可）</td></tr>
+  <tr><td>6. 年次運用サイクル</td><td class="fail">FAIL（PDCAが閉じない）</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 5. ラウンド2 -->
+<h2>5. ラウンド2: 修正 → 再レビュー → 最終承認</h2>
+
+<h3>5.1 修正対応（要件深堀エージェント）</h3>
+
+<h4>P0対応 — 全5件完了</h4>
+<table>
+  <tr><th>ID</th><th>対応内容</th></tr>
+  <tr><td>CRI-01</td><td>M-11マネジメントレビューモジュールを完全新規定義（4テーブル、14+ API、7画面、4 AI連携、ユーザーストーリー5件）。全モジュールのサマリーを入力資料として自動収集する設計</td></tr>
+  <tr><td>CRI-02</td><td>全新規モデルに<code>organizationId</code> + <code>@relation</code> + <code>@@index</code>を追加。Organization側の逆リレーション配列を一覧化</td></tr>
+  <tr><td>CRI-03</td><td>RiskItem, Vendor, IncidentCase, AuditFinding, CorrectiveActionに<code>evidenceRecords[]</code>逆リレーション追加。バリデーションルールも記載</td></tr>
+  <tr><td>CRI-04</td><td>RegisterItemとBusinessProcessへの逆リレーション<code>riskItems[]</code>追加。RiskAssessmentに<code>targetScope</code>追加</td></tr>
+  <tr><td>CRI-05</td><td>IncidentCaseに<code>correctiveActions[]</code>追加</td></tr>
+</table>
+
+<h4>P1対応 — 全8件完了</h4>
+<table>
+  <tr><th>ID</th><th>対応内容</th></tr>
+  <tr><td>MED-01</td><td>AUDITOR権限を明確化。AuditPlanAuditor中間テーブルで個別割当管理</td></tr>
+  <tr><td>MED-02</td><td>targetDeptIds→AuditPlanDepartment、auditorIds→AuditPlanAuditorに中間テーブル化</td></tr>
+  <tr><td>MED-03</td><td>fiscalYearを全モデルでInt型に統一</td></tr>
+  <tr><td>MED-04/05/08</td><td>MVPスコープ外セクション新設、本人対応・変更管理・第三者提供を明記</td></tr>
+  <tr><td>MED-06</td><td>横断API仕様に「PUTは部分更新許容」を明記</td></tr>
+  <tr><td>MED-07</td><td>全User参照フィールドに名前付きリレーション追加。User逆リレーション一覧化</td></tr>
+</table>
+
+<h3>5.2 再レビュー結果</h3>
+<table>
+  <tr><th>総合評価</th><td><strong>A</strong>（前回B → A）</td></tr>
+  <tr><th>前回P0指摘</th><td>5件 → <span class="pass">全件解消</span></td></tr>
+  <tr><th>前回P1指摘</th><td>8件 → <span class="pass">全件解消</span></td></tr>
+  <tr><th>新規指摘</th><td>軽微のみ7件（実装フェーズで対応可能）</td></tr>
+  <tr><th>推奨判定</th><td>APPROVED</td></tr>
+</table>
+
+<h3>5.3 最終承認判定</h3>
+<table>
+  <tr><th>判定</th><td><span class="tag tag-approved">APPROVED</span></td></tr>
+</table>
+
+<table>
+  <tr><th>必須基準</th><th>R1</th><th>R2</th></tr>
+  <tr><td>1. JIS Q 15001網羅性</td><td class="fail">FAIL</td><td class="pass">PASS</td></tr>
+  <tr><td>2. データモデル完全性</td><td class="fail">FAIL</td><td class="pass">PASS</td></tr>
+  <tr><td>3. API設計の一貫性</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+  <tr><td>4. 重大指摘ゼロ</td><td class="fail">FAIL</td><td class="pass">PASS</td></tr>
+  <tr><td>5. 実装可能性</td><td class="fail">FAIL</td><td class="pass">PASS</td></tr>
+  <tr><td>6. 年次運用サイクル</td><td class="fail">FAIL</td><td class="pass">PASS</td></tr>
+</table>
+
+<p>推奨基準3項目（AI連携、ロール網羅性、モジュール間連携）もすべてPASS。</p>
+
+<div class="page-break"></div>
+
+<!-- 6. 要件定義の全体像 -->
+<h2>6. 要件定義の全体像</h2>
+
+<h3>6.1 モジュール一覧（全10モジュール）</h3>
+<table>
+  <tr><th>#</th><th>モジュール</th><th>JIS条項</th><th>テーブル数</th><th>API数</th><th>画面数</th><th>AI連携</th></tr>
+  <tr><td>1</td><td>M-03 リスク管理</td><td>J.4.3.2</td><td>4</td><td>~12</td><td>5</td><td>リスク候補生成、対策提案</td></tr>
+  <tr><td>2</td><td>M-04 文書管理</td><td>J.4.4.5</td><td>2</td><td>~8</td><td>4</td><td>文書要約、差分説明</td></tr>
+  <tr><td>3</td><td>M-05 教育管理</td><td>J.4.4.2</td><td>4</td><td>~14</td><td>6</td><td>教材ドラフト、テスト生成</td></tr>
+  <tr><td>4</td><td>M-06 委託先管理</td><td>J.4.3.7</td><td>3</td><td>~10</td><td>5</td><td>質問票生成、回答分析</td></tr>
+  <tr><td>5</td><td>M-07 監査・是正</td><td>J.4.6.2</td><td>4</td><td>~14</td><td>6</td><td>監査質問案、是正提案</td></tr>
+  <tr><td>6</td><td>M-08 事故対応</td><td>J.4.3.10</td><td>2</td><td>~8</td><td>4</td><td>影響分析、報告書ドラフト</td></tr>
+  <tr><td>7</td><td>M-09 申請・更新</td><td>-</td><td>3</td><td>~8</td><td>4</td><td>変更報告自動生成</td></tr>
+  <tr><td>8</td><td>M-11 マネジメントレビュー</td><td>J.4.6.3</td><td>4</td><td>~14</td><td>7</td><td>議事録ドラフト、改善提案</td></tr>
+  <tr><td>9</td><td>エビデンスアップロード</td><td>-</td><td>拡張</td><td>~4</td><td>2</td><td>ファイル要約</td></tr>
+  <tr><td>10</td><td>事前調査プロファイル</td><td>-</td><td>既存</td><td>~3</td><td>3</td><td>既存AI連携</td></tr>
+</table>
+
+<h3>6.2 年次PDCAサイクルの実現</h3>
+<table>
+  <tr><th>フェーズ</th><th>対応モジュール</th><th>内容</th></tr>
+  <tr><td><strong>Plan</strong></td><td>M-03, M-04</td><td>リスク評価に基づく対策計画、文書体系整備</td></tr>
+  <tr><td><strong>Do</strong></td><td>M-02, M-05, M-06</td><td>台帳運用、教育実施、委託先管理</td></tr>
+  <tr><td><strong>Check</strong></td><td>M-07, M-08</td><td>内部監査、事故対応・分析</td></tr>
+  <tr><td><strong>Act</strong></td><td>M-11, M-09</td><td>マネジメントレビュー→改善指示→申請更新</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 7. 成果物一覧 -->
+<h2>7. 成果物一覧</h2>
+<table>
+  <tr><th>ファイル</th><th>内容</th><th>サイズ</th></tr>
+  <tr><td><code>plan/未実装モジュール要件定義書.md</code></td><td>全10モジュールの詳細要件定義（最終版）</td><td>約88KB</td></tr>
+  <tr><td><code>plan/修正対応表_ラウンド2.md</code></td><td>ラウンド1指摘への修正対応追跡表</td><td>約5KB</td></tr>
+  <tr><td><code>plan/要件レビュー_ラウンド1.md</code></td><td>ラウンド1のレビュー結果（評価B）</td><td>-</td></tr>
+  <tr><td><code>plan/要件レビュー_ラウンド2.md</code></td><td>ラウンド2のレビュー結果（評価A）</td><td>-</td></tr>
+  <tr><td><code>plan/最終承認_ラウンド1.md</code></td><td>ラウンド1の最終判定（REJECTED）</td><td>-</td></tr>
+  <tr><td><code>plan/最終承認_ラウンド2.md</code></td><td>ラウンド2の最終判定（APPROVED）</td><td>-</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 8. 推奨実装ロードマップ -->
+<h2>8. 推奨実装ロードマップ</h2>
+
+<table>
+  <tr><th>フェーズ</th><th>モジュール</th><th>依存関係</th><th>備考</th></tr>
+  <tr><td><strong>Phase A</strong><br>基盤拡張</td><td>エビデンスアップロード<br>事前調査プロファイル画面</td><td>なし（既存API活用）</td><td>既存機能の補完。最小工数で効果大</td></tr>
+  <tr><td><strong>Phase B</strong><br>コア機能</td><td>M-03 リスク管理</td><td>M-02（台帳）に依存</td><td>台帳→リスク評価の連携が核心</td></tr>
+  <tr><td><strong>Phase C</strong><br>文書・教育</td><td>M-04 文書管理<br>M-05 教育管理</td><td>独立して実装可能</td><td>並行開発可能</td></tr>
+  <tr><td><strong>Phase D</strong><br>外部管理</td><td>M-06 委託先管理</td><td>独立</td><td>-</td></tr>
+  <tr><td><strong>Phase E</strong><br>監査・事故</td><td>M-07 監査・是正<br>M-08 事故対応</td><td>M-03に部分依存</td><td>是正処置で相互連携</td></tr>
+  <tr><td><strong>Phase F</strong><br>統合</td><td>M-11 マネジメントレビュー</td><td>全モジュールの<br>サマリーデータ</td><td>全モジュール完成後が理想</td></tr>
+  <tr><td><strong>Phase G</strong><br>申請</td><td>M-09 申請・更新管理</td><td>全モジュール必須</td><td>最後に実装</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- 9. リスクと注意事項 -->
+<h2>9. リスクと注意事項</h2>
+
+<h3>9.1 実装フェーズでの注意事項</h3>
+<table>
+  <tr><th>#</th><th>項目</th><th>内容</th></tr>
+  <tr><td>1</td><td>Prismaマイグレーション</td><td>新規テーブル約30個の一括追加。既存データへの影響を考慮し、段階的マイグレーションを推奨</td></tr>
+  <tr><td>2</td><td>SQLiteの制約</td><td>本番運用ではPostgreSQL等への移行が必要。SQLiteのJSON型サポート制約に注意</td></tr>
+  <tr><td>3</td><td>Gemini APIコスト</td><td>AI連携機能が約20箇所に拡大。API利用量の監視とレート制限の実装が必要</td></tr>
+  <tr><td>4</td><td>ファイルアップロード</td><td>エビデンス・文書管理でファイル保存先の設計が必要（ローカル or クラウドストレージ）</td></tr>
+  <tr><td>5</td><td>MVPスコープ外</td><td>本人対応管理、変更管理プロセス、第三者提供管理はMVP後に対応</td></tr>
+</table>
+
+<h3>9.2 残存する軽微指摘（実装時対応）</h3>
+<ul>
+  <li>NEW-01: ChangeReportのorganizationId方針の明確化</li>
+  <li>NEW-02: ManagementReviewの議長とParticipantの二重管理整理</li>
+  <li>NEW-04〜07: QuizTemplate設計、PDF出力対応、ページネーション仕様の具体化</li>
+</ul>
+
+<div class="footer">
+  <p>AIPmark5 要件定義 作業報告書 — 2026年3月12日作成</p>
+</div>
+
+</body>
+</html>

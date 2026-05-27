@@ -52,3 +52,24 @@ CLAUDE.md
 AGENTS.md
 .claude/
 .codex/
+
+# generated reports
+*.pdf
+
+# temp prisma files
+prisma/dist/
+prisma/prisma/
+prisma/test-connection.cjs
+prisma/test.db
+prisma/test.db-journal
+
+# scripts (keep setup-agent.ts)
+scripts/*.pdf
+scripts/*.xlsx
+
+# template library (contains third-party company materials)
+/templates/
+
+# editor swap files
+*.swp
+*.swo

@@ -1,28 +1,13 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions, ROLE_LABELS } from "@/lib/auth";
-import { SessionProvider } from "@/components/session-provider";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect("/login");
-  }
-
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
-      <div className="flex h-screen bg-slate-50">
-        <Sidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <Header user={session.user} roleLabel={ROLE_LABELS[session.user.role] ?? session.user.role} />
-          <main className="flex-1 overflow-y-auto p-6">
-            {children}
-          </main>
-        </div>
-      </div>
-    </SessionProvider>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+        <a href="/" className="text-lg font-bold text-gray-900">AIPmark</a>
+        <span className="text-sm text-gray-500">Pマーク取得支援AI</span>
+      </header>
+      <main className="max-w-6xl mx-auto py-6 px-4">
+        {children}
+      </main>
+    </div>
   );
 }
